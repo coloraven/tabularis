@@ -30,6 +30,26 @@ pub const LEGACY_REGISTRY_URL: &str =
 /// `PluginRegistry` struct still deserializes the old schema unchanged
 /// (new fields are `#[serde(default)]`).
 pub async fn fetch_legacy_registry(url: &str) -> Result<PluginRegistry, String> {
+    let started = std::time::Instant::now();
+    let proxy = crate::proxy::resolve_global_scope(crate::proxy::SCOPE_APP_HTTP);
+    log::info!(
+        "[PluginRegistry] legacy fetch start url={} app_http_proxy={}",
+        url,
+        proxy
+            .as_ref()
+            .map(|p| {
+                format!(
+                    "{}://{}:{}",
+                    match p.protocol {
+                        crate::proxy::ProxyProtocol::Http => "http",
+                        crate::proxy::ProxyProtocol::Socks5 => "socks5",
+                    },
+                    p.host,
+                    p.port
+                )
+            })
+            .unwrap_or_else(|| "off".into())
+    );
     let client = crate::proxy::app_http_client()
         .map_err(|e| format!("Failed to build HTTP client: {}", e))?;
     let response = client
@@ -44,10 +64,17 @@ pub async fn fetch_legacy_registry(url: &str) -> Result<PluginRegistry, String> 
             response.status()
         ));
     }
-    response
+    let registry = response
         .json::<PluginRegistry>()
         .await
-        .map_err(|e| format!("Failed to parse legacy plugin registry: {}", e))
+        .map_err(|e| format!("Failed to parse legacy plugin registry: {}", e))?;
+    log::info!(
+        "[PluginRegistry] legacy fetch done url={} plugins={} elapsed_ms={}",
+        url,
+        registry.plugins.len(),
+        started.elapsed().as_millis()
+    );
+    Ok(registry)
 }
 
 /// COMPAT(registry-ga): registry-fetch entry point that MERGES the Tabularium
@@ -69,13 +96,51 @@ pub async fn resolve_registry(
     legacy_url: &str,
     installed_ids: &[String],
 ) -> Result<PluginRegistry, String> {
+    let total_started = std::time::Instant::now();
+    log::info!(
+        "[PluginRegistry] resolve start base_url={} legacy_url={} installed={}",
+        base_url,
+        legacy_url,
+        installed_ids.len()
+    );
+
     // Explicit static registry — the configured file is the sole source.
     if base_url.ends_with(".json") {
-        return fetch_legacy_registry(base_url).await;
+        let reg = fetch_legacy_registry(base_url).await?;
+        log::info!(
+            "[PluginRegistry] resolve done (static json only) plugins={} elapsed_ms={}",
+            reg.plugins.len(),
+            total_started.elapsed().as_millis()
+        );
+        return Ok(reg);
     }
 
+    let api_started = std::time::Instant::now();
     let api = registry::fetch_tabularium_registry(base_url).await;
+    let api_ms = api_started.elapsed().as_millis();
+    match &api {
+        Ok(r) => log::info!(
+            "[PluginRegistry] Tabularium API ok plugins={} elapsed_ms={} (SDK client does not use app proxy)",
+            r.plugins.len(),
+            api_ms
+        ),
+        Err(e) => log::warn!(
+            "[PluginRegistry] Tabularium API failed elapsed_ms={}: {}",
+            api_ms,
+            e
+        ),
+    }
+
+    let legacy_started = std::time::Instant::now();
     let legacy = fetch_legacy_registry(legacy_url).await;
+    let legacy_ms = legacy_started.elapsed().as_millis();
+    if let Err(e) = &legacy {
+        log::warn!(
+            "[PluginRegistry] legacy fetch failed elapsed_ms={}: {}",
+            legacy_ms,
+            e
+        );
+    }
 
     let mut resolved = match (api, legacy) {
         (Ok(api), Ok(legacy)) => merge_registries(stamp_api_source(api, base_url), legacy),
@@ -90,12 +155,31 @@ pub async fn resolve_registry(
                 e
             );
             // The API is down, so slug lookups would fail too — return as-is.
+            log::info!(
+                "[PluginRegistry] resolve done (legacy only) plugins={} api_ms={} legacy_ms={} total_ms={}",
+                legacy.plugins.len(),
+                api_ms,
+                legacy_ms,
+                total_started.elapsed().as_millis()
+            );
             return Ok(legacy);
         }
         (Err(api_err), Err(_)) => return Err(api_err),
     };
 
+    let readd_started = std::time::Instant::now();
+    let before = resolved.plugins.len();
     readd_unlisted_installed(&mut resolved, base_url, installed_ids).await;
+    let readded = resolved.plugins.len().saturating_sub(before);
+    log::info!(
+        "[PluginRegistry] resolve done plugins={} readded_unlisted={} api_ms={} legacy_ms={} readd_ms={} total_ms={}",
+        resolved.plugins.len(),
+        readded,
+        api_ms,
+        legacy_ms,
+        readd_started.elapsed().as_millis(),
+        total_started.elapsed().as_millis()
+    );
     Ok(resolved)
 }
 

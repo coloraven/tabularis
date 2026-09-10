@@ -20,6 +20,7 @@ fn registry_base_url(config: &crate::config::AppConfig) -> &str {
 pub async fn fetch_plugin_registry(
     app: AppHandle,
 ) -> Result<Vec<RegistryPluginWithStatus>, String> {
+    let started = std::time::Instant::now();
     let config = crate::config::load_config_internal(&app);
     let base_url = registry_base_url(&config).trim_end_matches('/').to_string();
     // COMPAT(registry-ga): merge the API with the legacy static registry.json so
@@ -27,6 +28,12 @@ pub async fn fetch_plugin_registry(
     let legacy_url = crate::plugins::compat::legacy_registry_url(&config);
     let installed = installer::list_installed()?;
     let installed_ids: Vec<String> = installed.iter().map(|i| i.id.clone()).collect();
+    log::info!(
+        "[PluginRegistry] command start base_url={} legacy_url={} installed={}",
+        base_url,
+        legacy_url,
+        installed_ids.len()
+    );
     let remote =
         crate::plugins::compat::resolve_registry(&base_url, &legacy_url, &installed_ids).await?;
     let platform = registry::get_current_platform();
@@ -45,6 +52,11 @@ pub async fn fetch_plugin_registry(
         })
         .collect();
 
+    log::info!(
+        "[PluginRegistry] command done plugins={} elapsed_ms={}",
+        result.len(),
+        started.elapsed().as_millis()
+    );
     Ok(result)
 }
 

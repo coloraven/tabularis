@@ -219,7 +219,35 @@ pub fn get_current_platform() -> String {
 /// full release list — the rest of the install pipeline (frontend cards,
 /// version picker, asset resolution) needs `releases[].assets` populated.
 pub async fn fetch_tabularium_registry(base_url: &str) -> Result<PluginRegistry, String> {
+    let total_started = std::time::Instant::now();
+    let proxy = crate::proxy::resolve_global_scope(crate::proxy::SCOPE_APP_HTTP);
+    log::info!(
+        "[PluginRegistry] Tabularium list start base_url={} app_http_proxy={}",
+        base_url,
+        proxy
+            .as_ref()
+            .map(|p| {
+                format!(
+                    "{}://{}:{}",
+                    match p.protocol {
+                        crate::proxy::ProxyProtocol::Http => "http",
+                        crate::proxy::ProxyProtocol::Socks5 => "socks5",
+                    },
+                    p.host,
+                    p.port
+                )
+            })
+            .unwrap_or_else(|| "off".into())
+    );
+    let list_started = std::time::Instant::now();
     let list = tabularium::fetch_plugin_list(base_url).await?;
+    let list_ms = list_started.elapsed().as_millis();
+    let list_count = list.len();
+    log::info!(
+        "[PluginRegistry] Tabularium list done count={} elapsed_ms={}",
+        list_count,
+        list_ms
+    );
 
     // Fetch every plugin's detail concurrently instead of N sequential
     // round-trips, but cap in-flight requests so a large registry can't fire
@@ -228,24 +256,47 @@ pub async fn fetch_tabularium_registry(base_url: &str) -> Result<PluginRegistry,
     // frontend cards. A failed detail call degrades to the list item (entry
     // visible but not installable — matches "platform unsupported" UX).
     use futures::stream::{self, StreamExt};
-    let plugins: Vec<RegistryPlugin> = stream::iter(list)
+    let details_started = std::time::Instant::now();
+    let detailed: Vec<(RegistryPlugin, bool)> = stream::iter(list)
         .map(|item| async move {
             let slug = item.id.clone();
+            log::info!("[PluginRegistry] Tabularium detail start slug={}", slug);
+            let started = std::time::Instant::now();
             match tabularium::fetch_plugin_detail(base_url, &slug).await {
-                Ok(detail) => detail,
+                Ok(detail) => {
+                    log::info!(
+                        "[PluginRegistry] Tabularium detail done slug={} ok=true elapsed_ms={}",
+                        slug,
+                        started.elapsed().as_millis()
+                    );
+                    (detail, true)
+                }
                 Err(err) => {
                     log::warn!(
-                        "Tabularium detail fetch failed for {}: {} — falling back to list item",
+                        "[PluginRegistry] Tabularium detail done slug={} ok=false elapsed_ms={}: {} — falling back to list item",
                         slug,
+                        started.elapsed().as_millis(),
                         err
                     );
-                    item
+                    (item, false)
                 }
             }
         })
         .buffered(8)
-        .collect::<Vec<_>>()
+        .collect()
         .await;
+
+    let detail_ok = detailed.iter().filter(|(_, ok)| *ok).count();
+    let detail_fallback = detailed.len() - detail_ok;
+    let plugins: Vec<RegistryPlugin> = detailed.into_iter().map(|(p, _)| p).collect();
+
+    log::info!(
+        "[PluginRegistry] Tabularium details done ok={} fallback={} concurrency=8 elapsed_ms={} total_ms={}",
+        detail_ok,
+        detail_fallback,
+        details_started.elapsed().as_millis(),
+        total_started.elapsed().as_millis()
+    );
 
     Ok(PluginRegistry {
         schema_version: 1,

@@ -9,14 +9,15 @@ mod types;
 #[cfg(test)]
 mod tests;
 
+pub use convert::{
+    column_meta_from_type_name, decode_hex, infer_kind_from_json, parse_decimal_str,
+    split_mysql_geometry, typed_value_from_json,
+};
 pub use format::{parse_csv_delimiter, value_to_csv_string, ExportFormat, DEFAULT_CSV_DELIMITER};
 pub use parquet_sink::{ParquetSink, TypedRowSink, DEFAULT_BATCH_ROWS};
 pub use progress::{ProgressEmitter, DEFAULT_INTERVAL as DEFAULT_PROGRESS_INTERVAL};
 pub use sink::{CsvSink, JsonSink, MarkdownSink, RowSink};
 pub use types::{ColumnExportMeta, ExportKind, TypedValue};
-pub use convert::{
-    column_meta_from_type_name, decode_hex, parse_decimal_str, split_mysql_geometry,
-};
 
 use std::collections::HashMap;
 use std::fs::File;
@@ -35,7 +36,6 @@ use crate::commands::{
 use crate::drivers::{mysql, postgres, sqlite};
 use crate::models::ConnectionParams;
 
-use convert::{column_meta_from_type_name, infer_kind_from_json, typed_value_from_json};
 use types::{ColumnExportMeta as ColMeta, TypedValue as TVal};
 
 pub struct ExportCancellationState {

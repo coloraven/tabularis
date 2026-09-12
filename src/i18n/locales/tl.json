@@ -39,7 +39,11 @@
     "development": "Development",
     "staging": "Staging",
     "production": "Production",
-    "short": { "development": "DEV", "staging": "STAGING", "production": "PROD" },
+    "short": {
+      "development": "DEV",
+      "staging": "STAGING",
+      "production": "PROD"
+    },
     "banner": "Production — {{name}}",
     "warnTitle": "Production na database",
     "warnMessage": "Malapit mo nang baguhin ang production data sa \"{{name}}\". Sigurado ka bang magpapatuloy?",
@@ -233,7 +237,8 @@
     "movePanel": "Ilipat ang panel",
     "refreshDatabaseList": "I-refresh ang listahan ng database",
     "databaseListUpToDate": "Up to date na ang listahan ng database",
-    "allDatabasesRefreshed": "Na-update ang mga database: {{names}}"
+    "allDatabasesRefreshed": "Na-update ang mga database: {{names}}",
+    "tasks": "Tasks"
   },
   "mcp": {
     "title": "Integrasyon ng MCP Server",
@@ -1208,7 +1213,8 @@
       "windowPreview": "Will export from offset {{offset}}, up to {{maxRows}} rows",
       "unlimited": "all",
       "formatOptions": "Format options",
-      "confirm": "I-export"
+      "confirm": "I-export",
+      "format": "Format"
     },
     "connected": "Nakakonekta",
     "disconnected": "Nakadiskonekta",
@@ -1561,7 +1567,8 @@
       "collapseAll": "I-collapse lahat",
       "expandAll": "I-expand lahat",
       "collapsed": "Na-collapse"
-    }
+    },
+    "exportAdvanced": "Advanced export…"
   },
   "createTable": {
     "title": "Gumawa ng Bagong Table",
@@ -2344,6 +2351,33 @@
         "ssl": "Gumagamit ng SSL/TLS, hindi pa suportado ng plugin",
         "connection_uri": "Gumagamit ng connection string, hindi pa suportado ng plugin"
       }
+    }
+  },
+  "jobs": {
+    "title": "Tasks",
+    "subtitle": "{{count}} running",
+    "empty": "No background tasks",
+    "emptyHint": "Long-running work such as exports appears here so you can track or cancel it.",
+    "cancel": "Cancel",
+    "remove": "Remove",
+    "clearFinished": "Clear finished",
+    "openProcessManager": "Open process manager",
+    "viewTasks": "View tasks",
+    "status": {
+      "queued": "Queued",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "kinds": {
+      "export": "Export"
+    },
+    "export": {
+      "title": "Export {{format}} · {{fileName}}",
+      "started": "Export started in the background",
+      "format": "Format",
+      "rows": "Rows"
     }
   }
 }

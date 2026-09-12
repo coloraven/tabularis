@@ -28,6 +28,7 @@ vi.mock("react-i18next", () => ({
       if (key === "editor.exportSettings.windowPreview") {
         return `offset=${opts?.offset};max=${opts?.maxRows}`;
       }
+      if (key === "editor.exportSettings.format") return "Format";
       if (key === "settings.csvDelimiter") return "CSV delimiter";
       return key;
     },
@@ -71,5 +72,25 @@ describe("ExportSettingsModal", () => {
     );
 
     expect(screen.getByDisplayValue(";")).toBeInTheDocument();
+  });
+
+  it("allows changing format when allowFormatChange is set", () => {
+    const onFormatChange = vi.fn();
+    render(
+      <ExportSettingsModal
+        isOpen
+        formatId="csv"
+        allowFormatChange
+        onFormatChange={onFormatChange}
+        scopeContext={{ loadedRows: 0 }}
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByDisplayValue("CSV"), {
+      target: { value: "parquet" },
+    });
+    expect(onFormatChange).toHaveBeenCalledWith("parquet");
   });
 });

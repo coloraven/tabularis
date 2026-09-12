@@ -14,6 +14,7 @@ import { Editor } from "./pages/Editor";
 import { McpPage } from "./pages/McpPage";
 import { Settings } from "./pages/Settings";
 import { SchemaDiagramPage } from "./pages/SchemaDiagramPage";
+import { JobsPage } from "./pages/JobsPage";
 import { TaskManagerPage } from "./pages/TaskManagerPage";
 import { VisualExplainPage } from "./pages/VisualExplainPage";
 import { JsonViewerPage } from "./pages/JsonViewerPage";
@@ -138,6 +139,7 @@ export function App() {
                         }
                       />
                       <Route path="mcp" element={<McpPage />} />
+                      <Route path="jobs" element={<JobsPage />} />
                       <Route path="settings" element={<Settings />} />
                     </Route>
                     <Route

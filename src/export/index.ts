@@ -7,7 +7,11 @@ export type {
   ExportScopeMode,
   ExportWindow,
 } from "./types";
-export { defaultExportScope, resolveExportWindow } from "./scope";
+export {
+  currentPageExportScope,
+  defaultExportScope,
+  resolveExportWindow,
+} from "./scope";
 export {
   EXPORT_FORMAT_PLUGINS,
   getExportFormatPlugin,

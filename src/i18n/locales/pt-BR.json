@@ -210,7 +210,8 @@
     "movePanel": "Mover painel",
     "refreshDatabaseList": "Atualizar lista de bancos de dados",
     "databaseListUpToDate": "A lista de bancos de dados está atualizada",
-    "allDatabasesRefreshed": "Bancos de dados atualizados: {{names}}"
+    "allDatabasesRefreshed": "Bancos de dados atualizados: {{names}}",
+    "tasks": "Tasks"
   },
   "mcp": {
     "title": "Integração com Servidor MCP",
@@ -1191,7 +1192,8 @@
       "windowPreview": "Will export from offset {{offset}}, up to {{maxRows}} rows",
       "unlimited": "all",
       "formatOptions": "Format options",
-      "confirm": "Exportar"
+      "confirm": "Exportar",
+      "format": "Format"
     },
     "connected": "Conectado",
     "disconnected": "Desconectado",
@@ -1546,7 +1548,8 @@
       "collapseAll": "Recolher tudo",
       "expandAll": "Expandir tudo",
       "collapsed": "Recolhido"
-    }
+    },
+    "exportAdvanced": "Advanced export…"
   },
   "createTable": {
     "title": "Criar Nova Tabela",
@@ -2373,5 +2376,32 @@
     },
     "title": "Log do teste de conexão",
     "showLog": "Mostrar log"
+  },
+  "jobs": {
+    "title": "Tasks",
+    "subtitle": "{{count}} running",
+    "empty": "No background tasks",
+    "emptyHint": "Long-running work such as exports appears here so you can track or cancel it.",
+    "cancel": "Cancel",
+    "remove": "Remove",
+    "clearFinished": "Clear finished",
+    "openProcessManager": "Open process manager",
+    "viewTasks": "View tasks",
+    "status": {
+      "queued": "Queued",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "kinds": {
+      "export": "Export"
+    },
+    "export": {
+      "title": "Export {{format}} · {{fileName}}",
+      "started": "Export started in the background",
+      "format": "Format",
+      "rows": "Rows"
+    }
   }
 }

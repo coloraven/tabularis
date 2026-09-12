@@ -70,6 +70,33 @@
     "beta": "Beta",
     "dismiss": "Dismiss"
   },
+  "jobs": {
+    "title": "Tasks",
+    "subtitle": "{{count}} running",
+    "empty": "No background tasks",
+    "emptyHint": "Long-running work such as exports appears here so you can track or cancel it.",
+    "cancel": "Cancel",
+    "remove": "Remove",
+    "clearFinished": "Clear finished",
+    "openProcessManager": "Open process manager",
+    "viewTasks": "View tasks",
+    "status": {
+      "queued": "Queued",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "kinds": {
+      "export": "Export"
+    },
+    "export": {
+      "title": "Export {{format}} · {{fileName}}",
+      "started": "Export started in the background",
+      "format": "Format",
+      "rows": "Rows"
+    }
+  },
   "sidebar": {
     "connections": "Connections",
     "settings": "Settings",
@@ -139,6 +166,7 @@
     "deleteFkConfirm": "Delete foreign key \"{{name}}\"?",
     "sqliteFkError": "SQLite does not support dropping FKs via ALTER TABLE.",
     "mcpServer": "MCP Server",
+    "tasks": "Tasks",
     "routines": "Routines",
     "functions": "Functions",
     "procedures": "Procedures",
@@ -1208,10 +1236,12 @@
     "runStatement": "Run Statement",
     "runAll": "Run All",
     "export": "Export",
+    "exportAdvanced": "Advanced export…",
     "exportParquet": "Parquet",
     "exportSettings": {
       "title": "Export · {{format}}",
       "subtitle": "Choose how many rows to export",
+      "format": "Format",
       "scope": "Range",
       "scope_all": "All rows",
       "scope_max_rows": "First N rows",

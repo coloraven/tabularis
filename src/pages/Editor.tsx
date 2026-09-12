@@ -10,6 +10,7 @@ import {
 } from "../utils/resultExport";
 import {
   EXPORT_FORMAT_PLUGINS,
+  currentPageExportScope,
   getExportFormatPlugin,
   resolveExportWindow,
   type ExportConfirmPayload,
@@ -17,6 +18,11 @@ import {
   type ExportScopeContext,
 } from "../export";
 import { ExportSettingsModal } from "../components/modals/ExportSettingsModal";
+import {
+  EXPORT_JOB_KIND,
+  useBackgroundJobs,
+  type ExportJobInput,
+} from "../jobs";
 import { serializePkKey, buildPkMap } from "../utils/dataGrid";
 import {
   buildKeylessUpdatePlan,
@@ -84,7 +90,6 @@ import {
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, emit } from "@tauri-apps/api/event";
-import { writeTextFile } from "@tauri-apps/plugin-fs";
 import {
   open as openFileDialog,
   save as saveFileDialog,
@@ -104,10 +109,6 @@ import { QueryParamsModal } from "../components/modals/QueryParamsModal";
 import { ErrorModal } from "../components/modals/ErrorModal";
 import { VisualQueryBuilder } from "../components/ui/VisualQueryBuilder";
 import { ContextMenu } from "../components/ui/ContextMenu";
-import {
-  ExportProgressModal,
-  type ExportStatus,
-} from "../components/modals/ExportProgressModal";
 import { splitQueries, splitStatements, findStatementAtOffset, extractTableName, getExplainableQueries, statementLabel, type Statement } from "../utils/sql";
 import { resolveRunTarget, type RunContext } from "../utils/runTarget";
 import {
@@ -188,10 +189,6 @@ import {
 import { computeAutoScrollSpeed } from "../utils/notebookDnd";
 import clsx from "clsx";
 
-interface ExportProgress {
-  rows_processed: number;
-}
-
 const CHEVRON_SELECT_STYLE: React.CSSProperties = {
   backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
   backgroundRepeat: "no-repeat",
@@ -258,6 +255,7 @@ export const Editor = ({ commandScopeId }: EditorProps) => {
   const { matchesShortcut, isMac } = useKeybindings();
   const { showAlert } = useAlert();
   const { showToast } = useToast();
+  const { enqueue } = useBackgroundJobs();
   const navigate = useNavigate();
 
   const driverReadonly = isReadonly(activeCapabilities);
@@ -285,21 +283,9 @@ export const Editor = ({ commandScopeId }: EditorProps) => {
     message: string;
   }>({ isOpen: false, message: "" });
 
-  const [exportState, setExportState] = useState<{
-    isOpen: boolean;
-    status: ExportStatus;
-    rowsProcessed: number;
-    fileName: string;
-    errorMessage?: string;
-    warningMessage?: string;
-  }>({
-    isOpen: false,
-    status: "exporting",
-    rowsProcessed: 0,
-    fileName: "",
-  });
+  const [exportWizardOpen, setExportWizardOpen] = useState(false);
   const [exportWizardFormat, setExportWizardFormat] =
-    useState<ExportFormatId | null>(null);
+    useState<ExportFormatId>("csv");
 
   const [activeFkQuery, setActiveFkQuery] = useState<{
     fk: ForeignKey;
@@ -310,18 +296,6 @@ export const Editor = ({ commandScopeId }: EditorProps) => {
   useEffect(() => {
     setActiveFkQuery(null);
   }, [activeTabId]);
-
-  useEffect(() => {
-    const unlisten = listen<ExportProgress>("export_progress", (event) => {
-      setExportState((prev) => ({
-        ...prev,
-        rowsProcessed: event.payload.rows_processed,
-      }));
-    });
-    return () => {
-      unlisten.then((f) => f());
-    };
-  }, []);
 
   const handleTabContextMenu = (e: React.MouseEvent, tabId: string) => {
     e.preventDefault();
@@ -3503,23 +3477,6 @@ export const Editor = ({ commandScopeId }: EditorProps) => {
     document.addEventListener("mouseup", stopResize);
   };
 
-  const cancelExport = useCallback(async () => {
-    if (!activeConnectionId) return;
-    try {
-      await invoke("cancel_export", { connectionId: activeConnectionId });
-      setExportState((prev) => ({
-        ...prev,
-        isOpen: false,
-      }));
-    } catch (e) {
-      console.error("Failed to cancel export", e);
-    }
-  }, [activeConnectionId]);
-
-  const closeExportModal = useCallback(() => {
-    setExportState((prev) => ({ ...prev, isOpen: false }));
-  }, []);
-
   const exportScopeContext = useMemo((): ExportScopeContext => {
     const result = activeResultEntry?.result ?? activeTab?.result;
     return {
@@ -3530,19 +3487,12 @@ export const Editor = ({ commandScopeId }: EditorProps) => {
     };
   }, [activeResultEntry?.result, activeTab?.result]);
 
-  const openExportWizard = useCallback((formatId: ExportFormatId) => {
-    setExportMenuOpen(false);
-    setExportWizardFormat(formatId);
-  }, []);
-
-  const runExportWithSettings = useCallback(
-    async (payload: ExportConfirmPayload) => {
+  const enqueueExportJob = useCallback(
+    (payload: ExportConfirmPayload) => {
       if (!activeTab || !activeConnectionId) return;
 
       const plugin = getExportFormatPlugin(payload.formatId);
       if (!plugin) return;
-
-      setExportWizardFormat(null);
 
       const window = resolveExportWindow(payload.scope, exportScopeContext);
       const delimiter =
@@ -3551,24 +3501,19 @@ export const Editor = ({ commandScopeId }: EditorProps) => {
           : csvDelimiter;
       const multiResult = activeResultEntry?.result;
       const useMemory =
-        payload.scope.mode === "loaded" &&
+        (payload.scope.mode === "loaded" || payload.scope.mode === "pages") &&
         plugin.supportsLoadedMemoryExport &&
-        !!multiResult?.rows.length;
+        !!multiResult?.rows.length &&
+        // Current-page / loaded exports can use in-memory rows when they
+        // already match the requested window (typical for the active page).
+        (payload.scope.mode === "loaded" ||
+          (payload.scope.mode === "pages" &&
+            payload.scope.pageCount === 1 &&
+            (payload.scope.startPage ?? 1) ===
+              (exportScopeContext.currentPage ?? 1)));
 
-      if (useMemory && multiResult) {
+      void (async () => {
         try {
-          const rows = multiResult.rows;
-          const sliced =
-            window.maxRows != null ? rows.slice(0, window.maxRows) : rows;
-          const exportResult = { ...multiResult, rows: sliced };
-          const loadedRowsLimit = getLoadedRowsExportLimit(multiResult);
-          const warningMessage = loadedRowsLimit
-            ? t("editor.exportLoadedRowsWarning", {
-                loaded: loadedRowsLimit.loadedRows.toLocaleString(),
-                total: loadedRowsLimit.totalRows.toLocaleString(),
-              })
-            : undefined;
-
           const filePath = await saveFileDialog({
             filters: [
               {
@@ -3580,101 +3525,100 @@ export const Editor = ({ commandScopeId }: EditorProps) => {
           });
           if (!filePath) return;
 
-          setExportState({
-            isOpen: true,
-            status: "exporting",
-            rowsProcessed: sliced.length,
-            fileName: filePath.split(/[/\\]/).pop() || filePath,
-            errorMessage: undefined,
-            warningMessage,
+          const fileName = filePath.split(/[/\\]/).pop() || filePath;
+          const title = t("jobs.export.title", {
+            format: plugin.label,
+            fileName,
           });
 
-          await writeTextFile(
-            filePath,
-            formatResultForExport(
-              exportResult,
-              payload.formatId as "csv" | "json" | "markdown",
-              delimiter,
-            ),
-          );
+          if (useMemory && multiResult) {
+            const rows = multiResult.rows;
+            const sliced =
+              window.maxRows != null ? rows.slice(0, window.maxRows) : rows;
+            const exportResult = { ...multiResult, rows: sliced };
+            const loadedRowsLimit = getLoadedRowsExportLimit(multiResult);
+            const warningMessage = loadedRowsLimit
+              ? t("editor.exportLoadedRowsWarning", {
+                  loaded: loadedRowsLimit.loadedRows.toLocaleString(),
+                  total: loadedRowsLimit.totalRows.toLocaleString(),
+                })
+              : undefined;
 
-          setExportState((prev) => ({ ...prev, status: "completed" }));
+            const input: ExportJobInput = {
+              filePath,
+              formatId: payload.formatId,
+              csvDelimiter: delimiter,
+              memoryText: formatResultForExport(
+                exportResult,
+                payload.formatId as "csv" | "json" | "markdown",
+                delimiter,
+              ),
+              memoryRowCount: sliced.length,
+            };
+
+            enqueue(EXPORT_JOB_KIND, title, input, {
+              format: payload.formatId,
+              fileName,
+              warningMessage,
+            });
+          } else {
+            const effectiveSchema =
+              activeCapabilities?.schemas === true
+                ? activeTab.schema
+                : undefined;
+            const tabForQuery = { ...activeTab, schema: effectiveSchema };
+            const query =
+              activeTab.type === "table" && activeTab.activeTable
+                ? reconstructTableQuery(
+                    tabForQuery,
+                    activeCapabilities ?? activeDriver ?? undefined,
+                  )
+                : activeTab.query;
+
+            if (!query || !query.trim()) return;
+
+            const targetDatabase =
+              activeTab?.schema ?? activeSchema ?? undefined;
+            const extras =
+              plugin.buildInvokeExtras?.(payload.formatOptions) ?? {};
+
+            const input: ExportJobInput = {
+              connectionId: activeConnectionId,
+              query,
+              filePath,
+              formatId: payload.formatId,
+              csvDelimiter:
+                payload.formatId === "csv"
+                  ? ((extras.csvDelimiter as string | undefined) ?? delimiter)
+                  : undefined,
+              offset: window.offset > 0 ? window.offset : undefined,
+              maxRows: window.maxRows,
+              database:
+                isMultiDatabaseCapable(activeCapabilities) && targetDatabase
+                  ? targetDatabase
+                  : undefined,
+            };
+
+            enqueue(EXPORT_JOB_KIND, title, input, {
+              format: payload.formatId,
+              fileName,
+              connectionId: activeConnectionId,
+            });
+          }
+
+          showToast(t("jobs.export.started"), {
+            kind: "info",
+            actions: [
+              {
+                label: t("jobs.viewTasks"),
+                onClick: () => navigate("/jobs"),
+              },
+            ],
+          });
         } catch (e) {
-          setExportState((prev) => ({
-            ...prev,
-            isOpen: true,
-            status: "error",
-            errorMessage: String(e),
-          }));
+          showToast(String(e), { kind: "error", title: t("common.error") });
         }
-        return;
-      }
-
-      const effectiveSchema =
-        activeCapabilities?.schemas === true ? activeTab.schema : undefined;
-      const tabForQuery = { ...activeTab, schema: effectiveSchema };
-      const query =
-        activeTab.type === "table" && activeTab.activeTable
-          ? reconstructTableQuery(
-              tabForQuery,
-              activeCapabilities ?? activeDriver ?? undefined,
-            )
-          : activeTab.query;
-
-      if (!query || !query.trim()) return;
-
-      try {
-        const filePath = await saveFileDialog({
-          filters: [
-            {
-              name: plugin.filterName,
-              extensions: [plugin.extension],
-            },
-          ],
-          defaultPath: `result_${Date.now()}.${plugin.extension}`,
-        });
-        if (!filePath) return;
-
-        setExportState({
-          isOpen: true,
-          status: "exporting",
-          rowsProcessed: 0,
-          fileName: filePath.split(/[/\\]/).pop() || filePath,
-          errorMessage: undefined,
-          warningMessage: undefined,
-        });
-
-        const targetDatabase = activeTab?.schema ?? activeSchema ?? undefined;
-        const databaseParam =
-          isMultiDatabaseCapable(activeCapabilities) && targetDatabase
-            ? { database: targetDatabase }
-            : {};
-
-        const extras = plugin.buildInvokeExtras?.(payload.formatOptions) ?? {};
-
-        await invoke("export_query_to_file", {
-          connectionId: activeConnectionId,
-          query,
-          filePath,
-          format: payload.formatId,
-          csvDelimiter:
-            payload.formatId === "csv"
-              ? ((extras.csvDelimiter as string | undefined) ?? delimiter)
-              : undefined,
-          offset: window.offset > 0 ? window.offset : undefined,
-          maxRows: window.maxRows ?? undefined,
-          ...databaseParam,
-        });
-
-        setExportState((prev) => ({ ...prev, status: "completed" }));
-      } catch (e) {
-        setExportState((prev) => ({
-          ...prev,
-          isOpen: true,
-          status: "error",
-          errorMessage: String(e),
-        }));
-      }
+      })();
     },
     [
       activeTab,
@@ -3685,8 +3629,37 @@ export const Editor = ({ commandScopeId }: EditorProps) => {
       activeSchema,
       csvDelimiter,
       exportScopeContext,
+      enqueue,
+      navigate,
+      showToast,
       t,
     ],
+  );
+
+  const startQuickExport = useCallback(
+    (formatId: ExportFormatId) => {
+      setExportMenuOpen(false);
+      enqueueExportJob({
+        formatId,
+        scope: currentPageExportScope(exportScopeContext),
+        formatOptions: { csvDelimiter },
+      });
+    },
+    [csvDelimiter, enqueueExportJob, exportScopeContext],
+  );
+
+  const openAdvancedExport = useCallback(() => {
+    setExportMenuOpen(false);
+    setExportWizardFormat("csv");
+    setExportWizardOpen(true);
+  }, []);
+
+  const runExportWithSettings = useCallback(
+    (payload: ExportConfirmPayload) => {
+      setExportWizardOpen(false);
+      enqueueExportJob(payload);
+    },
+    [enqueueExportJob],
   );
 
   // Re-runs the active tab's query without pagination and copies the full
@@ -4303,13 +4276,13 @@ export const Editor = ({ commandScopeId }: EditorProps) => {
           {exportMenuOpen && (
             <div
               role="menu"
-              className="absolute top-full right-0 mt-1 w-48 max-w-[calc(100cqw-1rem)] bg-elevated border border-strong rounded-md shadow-xl z-50 flex flex-col py-1 overflow-hidden"
+              className="absolute top-full right-0 mt-1 w-56 max-w-[calc(100cqw-1rem)] bg-elevated border border-strong rounded-md shadow-xl z-50 flex flex-col py-1 overflow-hidden"
             >
               {EXPORT_FORMAT_PLUGINS.map((plugin) => (
                 <button
                   key={plugin.id}
                   role="menuitem"
-                  onClick={() => openExportWizard(plugin.id)}
+                  onClick={() => startQuickExport(plugin.id)}
                   className="flex items-center gap-2.5 text-left px-3 py-2 text-sm text-secondary hover:bg-blue-500/15 hover:text-blue-400 transition-colors"
                 >
                   {plugin.id === "json" ? (
@@ -4325,6 +4298,15 @@ export const Editor = ({ commandScopeId }: EditorProps) => {
                   <span className="text-xs text-muted">.{plugin.extension}</span>
                 </button>
               ))}
+              <div className="my-1 border-t border-default" />
+              <button
+                role="menuitem"
+                onClick={openAdvancedExport}
+                className="flex items-center gap-2.5 text-left px-3 py-2 text-sm text-secondary hover:bg-blue-500/15 hover:text-blue-400 transition-colors"
+              >
+                <Download size={14} className="shrink-0 opacity-80" />
+                <span className="flex-1">{t("editor.exportAdvanced")}</span>
+              </button>
             </div>
           )}
         </div>
@@ -5308,22 +5290,14 @@ export const Editor = ({ commandScopeId }: EditorProps) => {
         onClose={() => setErrorModal({ isOpen: false, message: "" })}
         message={errorModal.message}
       />
-      <ExportProgressModal
-        isOpen={exportState.isOpen}
-        status={exportState.status}
-        rowsProcessed={exportState.rowsProcessed}
-        fileName={exportState.fileName}
-        errorMessage={exportState.errorMessage}
-        warningMessage={exportState.warningMessage}
-        onCancel={cancelExport}
-        onClose={closeExportModal}
-      />
       <ExportSettingsModal
-        isOpen={exportWizardFormat != null}
+        isOpen={exportWizardOpen}
         formatId={exportWizardFormat}
+        allowFormatChange
+        onFormatChange={setExportWizardFormat}
         scopeContext={exportScopeContext}
         initialFormatOptions={{ csvDelimiter }}
-        onClose={() => setExportWizardFormat(null)}
+        onClose={() => setExportWizardOpen(false)}
         onConfirm={runExportWithSettings}
       />
       <QueryParamsModal

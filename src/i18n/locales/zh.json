@@ -69,6 +69,33 @@
     "beta": "测试版",
     "dismiss": "关闭"
   },
+  "jobs": {
+    "title": "任务",
+    "subtitle": "{{count}} 个进行中",
+    "empty": "暂无后台任务",
+    "emptyHint": "导出等长耗时操作会显示在这里，便于查看进度或取消。",
+    "cancel": "取消",
+    "remove": "移除",
+    "clearFinished": "清除已结束",
+    "openProcessManager": "打开进程管理器",
+    "viewTasks": "查看任务",
+    "status": {
+      "queued": "排队中",
+      "running": "进行中",
+      "completed": "已完成",
+      "failed": "失败",
+      "cancelled": "已取消"
+    },
+    "kinds": {
+      "export": "导出"
+    },
+    "export": {
+      "title": "导出 {{format}} · {{fileName}}",
+      "started": "导出已在后台开始",
+      "format": "格式",
+      "rows": "行数"
+    }
+  },
   "sidebar": {
     "connections": "连接",
     "settings": "设置",
@@ -138,6 +165,7 @@
     "deleteFkConfirm": "删除外键 \"{{name}}\"？",
     "sqliteFkError": "SQLite 不支持通过 ALTER TABLE 删除外键。",
     "mcpServer": "MCP 服务器",
+    "tasks": "任务",
     "routines": "存储过程",
     "functions": "函数",
     "procedures": "存储过程",
@@ -1145,10 +1173,12 @@
     "runStatement": "运行当前语句",
     "runAll": "全部运行",
     "export": "导出",
+    "exportAdvanced": "高级导出…",
     "exportParquet": "Parquet",
     "exportSettings": {
       "title": "导出 · {{format}}",
       "subtitle": "选择导出范围",
+      "format": "格式",
       "scope": "范围",
       "scope_all": "全部行",
       "scope_max_rows": "前 N 行",

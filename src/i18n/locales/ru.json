@@ -39,7 +39,11 @@
     "development": "Разработка",
     "staging": "Staging",
     "production": "Продакшен",
-    "short": { "development": "DEV", "staging": "STAGING", "production": "PROD" },
+    "short": {
+      "development": "DEV",
+      "staging": "STAGING",
+      "production": "PROD"
+    },
     "banner": "Продакшен — {{name}}",
     "warnTitle": "Продакшен-база данных",
     "warnMessage": "Вы собираетесь изменить продакшен-данные на «{{name}}». Продолжить?",
@@ -233,7 +237,8 @@
     "movePanel": "Переместить панель",
     "refreshDatabaseList": "Обновить список баз данных",
     "databaseListUpToDate": "Список баз данных актуален",
-    "allDatabasesRefreshed": "Базы данных обновлены: {{names}}"
+    "allDatabasesRefreshed": "Базы данных обновлены: {{names}}",
+    "tasks": "Tasks"
   },
   "mcp": {
     "title": "Интеграция MCP-сервера",
@@ -1189,7 +1194,8 @@
       "windowPreview": "Will export from offset {{offset}}, up to {{maxRows}} rows",
       "unlimited": "all",
       "formatOptions": "Format options",
-      "confirm": "Экспорт"
+      "confirm": "Экспорт",
+      "format": "Format"
     },
     "connected": "Подключено",
     "disconnected": "Отключено",
@@ -1536,7 +1542,8 @@
       "collapseAll": "Свернуть все",
       "expandAll": "Развернуть все",
       "collapsed": "Свёрнуто"
-    }
+    },
+    "exportAdvanced": "Advanced export…"
   },
   "createTable": {
     "title": "Создать новую таблицу",
@@ -2345,6 +2352,33 @@
         "ssl": "Использует SSL/TLS, пока не поддерживается плагином",
         "connection_uri": "Использует строку подключения, пока не поддерживается плагином"
       }
+    }
+  },
+  "jobs": {
+    "title": "Tasks",
+    "subtitle": "{{count}} running",
+    "empty": "No background tasks",
+    "emptyHint": "Long-running work such as exports appears here so you can track or cancel it.",
+    "cancel": "Cancel",
+    "remove": "Remove",
+    "clearFinished": "Clear finished",
+    "openProcessManager": "Open process manager",
+    "viewTasks": "View tasks",
+    "status": {
+      "queued": "Queued",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "kinds": {
+      "export": "Export"
+    },
+    "export": {
+      "title": "Export {{format}} · {{fileName}}",
+      "started": "Export started in the background",
+      "format": "Format",
+      "rows": "Rows"
     }
   }
 }

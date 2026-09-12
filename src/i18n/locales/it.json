@@ -39,7 +39,11 @@
     "development": "Sviluppo",
     "staging": "Staging",
     "production": "Produzione",
-    "short": { "development": "DEV", "staging": "STAGING", "production": "PROD" },
+    "short": {
+      "development": "DEV",
+      "staging": "STAGING",
+      "production": "PROD"
+    },
     "banner": "Produzione — {{name}}",
     "warnTitle": "Database di produzione",
     "warnMessage": "Stai per modificare dati di produzione su \"{{name}}\". Vuoi davvero continuare?",
@@ -220,7 +224,8 @@
     "movePanel": "Sposta pannello",
     "refreshDatabaseList": "Aggiorna elenco database",
     "databaseListUpToDate": "L'elenco dei database è aggiornato",
-    "allDatabasesRefreshed": "Database aggiornati: {{names}}"
+    "allDatabasesRefreshed": "Database aggiornati: {{names}}",
+    "tasks": "Tasks"
   },
   "groups": {
     "title": "Gruppi",
@@ -1200,7 +1205,8 @@
       "windowPreview": "Will export from offset {{offset}}, up to {{maxRows}} rows",
       "unlimited": "all",
       "formatOptions": "Format options",
-      "confirm": "Esporta"
+      "confirm": "Esporta",
+      "format": "Format"
     },
     "connected": "Connesso",
     "disconnected": "Disconnesso",
@@ -1553,7 +1559,8 @@
       "collapseAll": "Comprimi tutto",
       "expandAll": "Espandi tutto",
       "collapsed": "Compresso"
-    }
+    },
+    "exportAdvanced": "Advanced export…"
   },
   "createTable": {
     "title": "Crea Nuova Tabella",
@@ -2324,5 +2331,32 @@
     },
     "title": "Log del test di connessione",
     "showLog": "Mostra log"
+  },
+  "jobs": {
+    "title": "Tasks",
+    "subtitle": "{{count}} running",
+    "empty": "No background tasks",
+    "emptyHint": "Long-running work such as exports appears here so you can track or cancel it.",
+    "cancel": "Cancel",
+    "remove": "Remove",
+    "clearFinished": "Clear finished",
+    "openProcessManager": "Open process manager",
+    "viewTasks": "View tasks",
+    "status": {
+      "queued": "Queued",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "kinds": {
+      "export": "Export"
+    },
+    "export": {
+      "title": "Export {{format}} · {{fileName}}",
+      "started": "Export started in the background",
+      "format": "Format",
+      "rows": "Rows"
+    }
   }
 }

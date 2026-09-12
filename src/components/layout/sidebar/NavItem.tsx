@@ -8,9 +8,17 @@ interface NavItemProps {
   icon: React.ElementType;
   label: string;
   isConnected?: boolean;
+  /** Optional badge count (e.g. running background jobs). */
+  badge?: number;
 }
 
-export const NavItem = ({ to, icon: Icon, label, isConnected }: NavItemProps) => (
+export const NavItem = ({
+  to,
+  icon: Icon,
+  label,
+  isConnected,
+  badge,
+}: NavItemProps) => (
   <NavLink
     to={to}
     className={({ isActive }) =>
@@ -29,6 +37,11 @@ export const NavItem = ({ to, icon: Icon, label, isConnected }: NavItemProps) =>
           <Icon size={24} />
           {isConnected && (
             <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-elevated"></span>
+          )}
+          {typeof badge === "number" && badge > 0 && (
+            <span className="absolute -top-1.5 -right-2 min-w-[1.1rem] h-[1.1rem] px-0.5 rounded-full bg-blue-500 text-[10px] leading-[1.1rem] text-center text-white font-semibold border border-elevated">
+              {badge > 99 ? "99+" : badge}
+            </span>
           )}
         </div>
         <span className="absolute left-14 bg-surface-secondary text-primary text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-30 pointer-events-none">

@@ -56,6 +56,7 @@ impl Default for ExportCancellationState {
 
 #[derive(Clone, Serialize)]
 struct ExportProgressPayload {
+    job_id: String,
     rows_processed: u64,
 }
 
@@ -68,11 +69,11 @@ fn sanitize_query(query: &str) -> String {
 #[tauri::command]
 pub async fn cancel_export(
     state: State<'_, ExportCancellationState>,
-    connection_id: String,
+    job_id: String,
 ) -> Result<(), String> {
     let entries = {
         let mut handles = state.handles.lock().unwrap();
-        handles.remove(&connection_id).unwrap_or_default()
+        handles.remove(&job_id).unwrap_or_default()
     };
     for handle in entries {
         handle.abort();
@@ -84,6 +85,7 @@ pub async fn cancel_export(
 pub async fn export_query_to_file<R: Runtime>(
     app: AppHandle<R>,
     state: State<'_, ExportCancellationState>,
+    job_id: String,
     connection_id: String,
     query: String,
     file_path: String,
@@ -111,13 +113,15 @@ pub async fn export_query_to_file<R: Runtime>(
     let window = ExportWindow::new(offset, max_rows);
 
     let app_for_task = app.clone();
-    let task_connection_id = connection_id.clone();
+    let task_job_id = job_id.clone();
+    let progress_job_id = job_id.clone();
 
     let task = tokio::spawn(async move {
         let file = File::create(&file_path).map_err(|e| e.to_string())?;
         let writer = BufWriter::new(file);
         run_export(
             app_for_task,
+            progress_job_id,
             &driver,
             &params,
             &sanitized_query,
@@ -130,15 +134,11 @@ pub async fn export_query_to_file<R: Runtime>(
     });
 
     let abort_handle = Arc::new(task.abort_handle());
-    register_abort_handle(
-        &state.handles,
-        task_connection_id.clone(),
-        abort_handle.clone(),
-    );
+    register_abort_handle(&state.handles, task_job_id.clone(), abort_handle.clone());
 
     let result = task.await;
 
-    unregister_abort_handle(&state.handles, &task_connection_id, &abort_handle);
+    unregister_abort_handle(&state.handles, &task_job_id, &abort_handle);
 
     match result {
         Ok(res) => res,
@@ -151,6 +151,7 @@ pub async fn export_query_to_file<R: Runtime>(
 /// pieces remain individually unit-testable.
 async fn run_export<R: Runtime>(
     app: AppHandle<R>,
+    job_id: String,
     driver: &str,
     params: &ConnectionParams,
     query: &str,
@@ -164,6 +165,7 @@ async fn run_export<R: Runtime>(
         let _ = app_for_progress.emit(
             EXPORT_PROGRESS_EVENT,
             ExportProgressPayload {
+                job_id: job_id.clone(),
                 rows_processed: count,
             },
         );

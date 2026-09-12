@@ -58,3 +58,16 @@ export function defaultExportScope(ctx: ExportScopeContext): ExportScope {
     pageCount: 1,
   };
 }
+
+/** Default quick-export scope: the current result page, or all loaded rows. */
+export function currentPageExportScope(ctx: ExportScopeContext): ExportScope {
+  if (ctx.currentPage != null && ctx.pageSize != null) {
+    return {
+      mode: "pages",
+      startPage: ctx.currentPage,
+      pageCount: 1,
+      pageSize: ctx.pageSize,
+    };
+  }
+  return { mode: "loaded" };
+}

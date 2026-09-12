@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Plug2, Settings, Cpu, PanelLeft, Layers, Star, Clock, BookOpen } from "lucide-react";
+import { Plug2, Settings, Cpu, PanelLeft, Layers, Star, Clock, BookOpen, ListTodo } from "lucide-react";
 import { DiscordIcon } from "../icons/DiscordIcon";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { DISCORD_URL } from "../../config/links";
@@ -27,6 +27,7 @@ import { canAddToSplit, isConnectionGrouped } from "../../utils/connectionLayout
 import { rectContains, startPointerDrag } from "../../utils/pointerDrag";
 import { useDrivers } from "../../hooks/useDrivers";
 import { useKeybindings } from "../../hooks/useKeybindings";
+import { useBackgroundJobs } from "../../jobs";
 
 export const Sidebar = () => {
   const { t } = useTranslation();
@@ -43,6 +44,7 @@ export const Sidebar = () => {
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("structure");
   const [showShortcutHints, setShowShortcutHints] = useState(false);
   const { isMac } = useKeybindings();
+  const { runningCount } = useBackgroundJobs();
 
   useEffect(() => {
     const handler = () => setIsExplorerCollapsed((prev) => !prev);
@@ -314,6 +316,13 @@ export const Sidebar = () => {
             </button>
             <DiscordCommunityCallout />
           </div>
+
+          <NavItem
+            to="/jobs"
+            icon={ListTodo}
+            label={t("sidebar.tasks")}
+            badge={runningCount}
+          />
 
           <NavItem
             to="/mcp"

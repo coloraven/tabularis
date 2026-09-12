@@ -4,6 +4,7 @@ import { Download, X } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import {
   defaultExportScope,
+  EXPORT_FORMAT_PLUGINS,
   getExportFormatPlugin,
   type ExportConfirmPayload,
   type ExportFormatId,
@@ -19,6 +20,9 @@ export interface ExportSettingsModalProps {
   formatId: ExportFormatId | null;
   scopeContext: ExportScopeContext;
   initialFormatOptions?: ExportFormatOptions;
+  /** When true, show a format picker (Advanced export entry). */
+  allowFormatChange?: boolean;
+  onFormatChange?: (formatId: ExportFormatId) => void;
   onClose: () => void;
   onConfirm: (payload: ExportConfirmPayload) => void;
 }
@@ -30,6 +34,8 @@ export function ExportSettingsModal({
   formatId,
   scopeContext,
   initialFormatOptions,
+  allowFormatChange = false,
+  onFormatChange,
   onClose,
   onConfirm,
 }: ExportSettingsModalProps) {
@@ -98,6 +104,29 @@ export function ExportSettingsModal({
         </div>
 
         <div className="p-6 space-y-5 overflow-y-auto">
+          {allowFormatChange && (
+            <label className="flex flex-col gap-1.5 text-sm">
+              <span className="text-secondary">
+                {t("editor.exportSettings.format")}
+              </span>
+              <select
+                value={formatId}
+                onChange={(e) =>
+                  onFormatChange?.(e.target.value as ExportFormatId)
+                }
+                className="w-full px-2 py-1.5 bg-surface-secondary border border-strong rounded text-primary"
+              >
+                {EXPORT_FORMAT_PLUGINS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.labelKey
+                      ? t(p.labelKey, { defaultValue: p.label })
+                      : p.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
           <fieldset className="space-y-3">
             <legend className="text-sm font-medium text-primary mb-1">
               {t("editor.exportSettings.scope")}

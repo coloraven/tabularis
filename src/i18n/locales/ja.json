@@ -39,7 +39,11 @@
     "development": "開発",
     "staging": "ステージング",
     "production": "本番",
-    "short": { "development": "DEV", "staging": "STAGING", "production": "PROD" },
+    "short": {
+      "development": "DEV",
+      "staging": "STAGING",
+      "production": "PROD"
+    },
     "banner": "本番 — {{name}}",
     "warnTitle": "本番データベース",
     "warnMessage": "「{{name}}」の本番データを変更しようとしています。続行しますか？",
@@ -233,7 +237,8 @@
     "movePanel": "パネルを移動",
     "refreshDatabaseList": "データベース一覧を更新",
     "databaseListUpToDate": "データベース一覧は最新です",
-    "allDatabasesRefreshed": "データベースを更新しました: {{names}}"
+    "allDatabasesRefreshed": "データベースを更新しました: {{names}}",
+    "tasks": "Tasks"
   },
   "mcp": {
     "title": "MCP サーバー連携",
@@ -1207,7 +1212,8 @@
       "windowPreview": "Will export from offset {{offset}}, up to {{maxRows}} rows",
       "unlimited": "all",
       "formatOptions": "Format options",
-      "confirm": "エクスポート"
+      "confirm": "エクスポート",
+      "format": "Format"
     },
     "connected": "接続済み",
     "disconnected": "切断済み",
@@ -1542,7 +1548,8 @@
       "collapseAll": "すべて折りたたむ",
       "expandAll": "すべて展開",
       "collapsed": "折りたたみ中"
-    }
+    },
+    "exportAdvanced": "Advanced export…"
   },
   "createTable": {
     "title": "新規テーブルを作成",
@@ -2340,5 +2347,32 @@
     },
     "title": "接続テストのログ",
     "showLog": "ログを表示"
+  },
+  "jobs": {
+    "title": "Tasks",
+    "subtitle": "{{count}} running",
+    "empty": "No background tasks",
+    "emptyHint": "Long-running work such as exports appears here so you can track or cancel it.",
+    "cancel": "Cancel",
+    "remove": "Remove",
+    "clearFinished": "Clear finished",
+    "openProcessManager": "Open process manager",
+    "viewTasks": "View tasks",
+    "status": {
+      "queued": "Queued",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "kinds": {
+      "export": "Export"
+    },
+    "export": {
+      "title": "Export {{format}} · {{fileName}}",
+      "started": "Export started in the background",
+      "format": "Format",
+      "rows": "Rows"
+    }
   }
 }

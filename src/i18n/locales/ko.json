@@ -210,7 +210,8 @@
     "movePanel": "패널 이동",
     "refreshDatabaseList": "데이터베이스 목록 새로고침",
     "databaseListUpToDate": "데이터베이스 목록이 최신 상태입니다",
-    "allDatabasesRefreshed": "데이터베이스 업데이트됨: {{names}}"
+    "allDatabasesRefreshed": "데이터베이스 업데이트됨: {{names}}",
+    "tasks": "Tasks"
   },
   "mcp": {
     "title": "MCP 서버 연동",
@@ -1152,7 +1153,8 @@
       "windowPreview": "Will export from offset {{offset}}, up to {{maxRows}} rows",
       "unlimited": "all",
       "formatOptions": "Format options",
-      "confirm": "내보내기"
+      "confirm": "내보내기",
+      "format": "Format"
     },
     "connected": "연결됨",
     "disconnected": "연결 해제됨",
@@ -1505,7 +1507,8 @@
       "collapseAll": "모두 접기",
       "expandAll": "모두 펼치기",
       "collapsed": "접힘"
-    }
+    },
+    "exportAdvanced": "Advanced export…"
   },
   "createTable": {
     "title": "새 테이블 만들기",
@@ -2278,6 +2281,33 @@
         "ssl": "SSL/TLS를 사용하며, 플러그인에서 아직 지원되지 않음",
         "connection_uri": "연결 문자열을 사용하며, 플러그인에서 아직 지원되지 않음"
       }
+    }
+  },
+  "jobs": {
+    "title": "Tasks",
+    "subtitle": "{{count}} running",
+    "empty": "No background tasks",
+    "emptyHint": "Long-running work such as exports appears here so you can track or cancel it.",
+    "cancel": "Cancel",
+    "remove": "Remove",
+    "clearFinished": "Clear finished",
+    "openProcessManager": "Open process manager",
+    "viewTasks": "View tasks",
+    "status": {
+      "queued": "Queued",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "kinds": {
+      "export": "Export"
+    },
+    "export": {
+      "title": "Export {{format}} · {{fileName}}",
+      "started": "Export started in the background",
+      "format": "Format",
+      "rows": "Rows"
     }
   }
 }

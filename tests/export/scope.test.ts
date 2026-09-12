@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { defaultExportScope, resolveExportWindow } from "../../src/export/scope";
+import {
+  currentPageExportScope,
+  defaultExportScope,
+  resolveExportWindow,
+} from "../../src/export/scope";
 
 describe("resolveExportWindow", () => {
   const ctx = {
@@ -40,10 +44,7 @@ describe("resolveExportWindow", () => {
 
   it("falls back to a prefix of loaded rows without pagination", () => {
     expect(
-      resolveExportWindow(
-        { mode: "loaded" },
-        { loadedRows: 40 },
-      ),
+      resolveExportWindow({ mode: "loaded" }, { loadedRows: 40 }),
     ).toEqual({ offset: 0, maxRows: 40 });
   });
 });
@@ -53,5 +54,28 @@ describe("defaultExportScope", () => {
     expect(defaultExportScope({ loadedRows: 10, pageSize: 100 }).mode).toBe(
       "all",
     );
+  });
+});
+
+describe("currentPageExportScope", () => {
+  it("uses a single page when pagination is known", () => {
+    expect(
+      currentPageExportScope({
+        loadedRows: 50,
+        currentPage: 3,
+        pageSize: 50,
+      }),
+    ).toEqual({
+      mode: "pages",
+      startPage: 3,
+      pageCount: 1,
+      pageSize: 50,
+    });
+  });
+
+  it("falls back to loaded rows without pagination", () => {
+    expect(currentPageExportScope({ loadedRows: 12 })).toEqual({
+      mode: "loaded",
+    });
   });
 });

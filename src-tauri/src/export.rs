@@ -14,6 +14,9 @@ pub use parquet_sink::{ParquetSink, TypedRowSink, DEFAULT_BATCH_ROWS};
 pub use progress::{ProgressEmitter, DEFAULT_INTERVAL as DEFAULT_PROGRESS_INTERVAL};
 pub use sink::{CsvSink, JsonSink, MarkdownSink, RowSink};
 pub use types::{ColumnExportMeta, ExportKind, TypedValue};
+pub use convert::{
+    column_meta_from_type_name, decode_hex, parse_decimal_str, split_mysql_geometry,
+};
 
 use std::collections::HashMap;
 use std::fs::File;

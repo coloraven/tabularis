@@ -1,6 +1,6 @@
 use super::*;
-use crate::export::convert::parse_decimal_str;
-use crate::export::types::{ColumnExportMeta, ExportKind, TypedValue};
+use super::convert::parse_decimal_str;
+use super::types::{ColumnExportMeta, ExportKind, TypedValue};
 use arrow::array::Decimal128Array;
 use arrow::datatypes::DataType;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;

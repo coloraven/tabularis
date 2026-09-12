@@ -1,5 +1,5 @@
 use super::*;
-use crate::export::types::{ColumnExportMeta, ExportKind};
+use super::types::{ColumnExportMeta, ExportKind};
 
 #[test]
 fn numeric_never_becomes_float64() {

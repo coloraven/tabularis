@@ -2,7 +2,7 @@ use futures::StreamExt;
 use serde_json::Value;
 use sqlx::{Column, Row};
 
-use crate::export::types::{ColumnExportMeta, TypedValue};
+use crate::export::{ColumnExportMeta, TypedValue};
 use crate::models::ConnectionParams;
 use crate::pool_manager::get_sqlite_pool;
 

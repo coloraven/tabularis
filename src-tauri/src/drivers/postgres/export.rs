@@ -1,7 +1,7 @@
 use futures::StreamExt;
 use serde_json::Value;
 
-use crate::export::types::{ColumnExportMeta, TypedValue};
+use crate::export::{ColumnExportMeta, TypedValue};
 use crate::models::ConnectionParams;
 use crate::pool_manager::get_postgres_pool;
 

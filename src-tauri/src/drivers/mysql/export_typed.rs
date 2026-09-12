@@ -4,10 +4,10 @@ use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use sqlx::{Column, Row, TypeInfo, ValueRef};
 use uuid::Uuid;
 
-use crate::export::convert::{
-    column_meta_from_type_name, parse_decimal_str, split_mysql_geometry,
+use crate::export::{
+    column_meta_from_type_name, parse_decimal_str, split_mysql_geometry, ColumnExportMeta,
+    ExportKind, TypedValue,
 };
-use crate::export::types::{ColumnExportMeta, ExportKind, TypedValue};
 
 use super::extract::resolve_effective_type;
 

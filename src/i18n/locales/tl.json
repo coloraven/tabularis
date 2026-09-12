@@ -2378,6 +2378,9 @@
       "started": "Export started in the background",
       "format": "Format",
       "rows": "Rows"
-    }
+    },
+    "emptyFiltered": "No tasks in this category",
+    "emptyFilteredHint": "Switch to All or start a task of this type.",
+    "allKinds": "All"
   }
 }

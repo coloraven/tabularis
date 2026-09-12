@@ -184,7 +184,8 @@ export const Sidebar = () => {
       location.pathname === "/" ||
       location.pathname === "/connections" ||
       location.pathname === "/mcp" ||
-      location.pathname === "/settings"
+      location.pathname === "/settings" ||
+      location.pathname === "/jobs"
     ) {
       navigate("/editor");
     }
@@ -225,7 +226,8 @@ export const Sidebar = () => {
     !!explorerConnId &&
     location.pathname !== "/settings" &&
     location.pathname !== "/mcp" &&
-    location.pathname !== "/connections";
+    location.pathname !== "/connections" &&
+    location.pathname !== "/jobs";
 
   return (
     <div className="flex h-full">

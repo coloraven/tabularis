@@ -53,6 +53,9 @@ keyring = { version = "3.6.3", features = ["apple-native", "windows-native", "li
 tauri-plugin-opener = "2"
 once_cell = "1.20"
 csv = "1.4.0"
+# Query-result Parquet export (Faithful DECIMAL / binary / GeoParquet path).
+arrow = "55"
+parquet = { version = "55", default-features = false, features = ["arrow", "zstd"] }
 reqwest = { version = "0.13.1", features = ["json"] }
 clap = { version = "4.5.56", features = ["derive"] }
 directories = "6.0.0"

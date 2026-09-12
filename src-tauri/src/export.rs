@@ -1,13 +1,19 @@
+mod convert;
 mod format;
+mod parquet_sink;
 mod progress;
+mod schema;
 mod sink;
+mod types;
 
 #[cfg(test)]
 mod tests;
 
 pub use format::{parse_csv_delimiter, value_to_csv_string, ExportFormat, DEFAULT_CSV_DELIMITER};
+pub use parquet_sink::{ParquetSink, TypedRowSink, DEFAULT_BATCH_ROWS};
 pub use progress::{ProgressEmitter, DEFAULT_INTERVAL as DEFAULT_PROGRESS_INTERVAL};
 pub use sink::{CsvSink, JsonSink, MarkdownSink, RowSink};
+pub use types::{ColumnExportMeta, ExportKind, TypedValue};
 
 use std::collections::HashMap;
 use std::fs::File;
@@ -25,6 +31,9 @@ use crate::commands::{
 };
 use crate::drivers::{mysql, postgres, sqlite};
 use crate::models::ConnectionParams;
+
+use convert::{column_meta_from_type_name, infer_kind_from_json, typed_value_from_json};
+use types::{ColumnExportMeta as ColMeta, TypedValue as TVal};
 
 pub struct ExportCancellationState {
     pub handles: Arc<Mutex<AbortHandleMap>>,
@@ -164,6 +173,11 @@ async fn run_export<R: Runtime>(
             stream_to_sink(driver, params, query, &mut sink, &mut progress).await?;
             sink.finish()?;
         }
+        ExportFormat::Parquet => {
+            let mut sink = ParquetSink::new(writer);
+            stream_typed_to_sink(driver, params, query, &mut sink, &mut progress).await?;
+            sink.finish()?;
+        }
     }
 
     progress.finish();
@@ -197,6 +211,48 @@ where
     }
 }
 
+async fn stream_typed_to_sink<S, F>(
+    driver: &str,
+    params: &ConnectionParams,
+    query: &str,
+    sink: &mut S,
+    progress: &mut ProgressEmitter<F>,
+) -> Result<(), String>
+where
+    S: TypedRowSink + Send,
+    F: FnMut(u64) + Send,
+{
+    let mut began = false;
+    let mut on_row = |columns: &[ColMeta], values: &[TVal]| -> Result<(), String> {
+        if !began {
+            sink.begin(columns)?;
+            began = true;
+        }
+        sink.write_row(values)?;
+        progress.tick();
+        Ok(())
+    };
+
+    let result = match driver {
+        "mysql" => mysql::export::stream_typed_query(params, query, &mut on_row).await,
+        "postgres" => postgres::export::stream_typed_query(params, query, &mut on_row).await,
+        "sqlite" => sqlite::export::stream_typed_query(params, query, &mut on_row).await,
+        other => stream_typed_via_plugin(other, params, query, &mut on_row).await,
+    };
+
+    // Empty result sets never call on_row — still emit a valid empty Parquet file
+    // when the query returns zero rows. Callers that know column metadata could
+    // begin earlier; without a row we cannot invent a schema, so finish alone
+    // would fail. Surface a clear error instead of a corrupt file.
+    if result.is_ok() && !began {
+        return Err(
+            "Query returned no rows; Parquet export needs at least one row to infer columns"
+                .into(),
+        );
+    }
+    result
+}
+
 /// Streams a query for an external plugin driver by repeatedly calling its
 /// `execute_query` with the driver's pagination, forwarding each row to
 /// `on_row`. Built-in drivers stream directly from the database; plugins only
@@ -224,6 +280,99 @@ where
 
         for row in &result.rows {
             on_row(&result.columns, row)?;
+        }
+
+        let fetched = result.rows.len() as u32;
+        let has_more = result
+            .pagination
+            .as_ref()
+            .map(|p| p.has_more)
+            .unwrap_or(fetched >= PAGE_SIZE);
+
+        if fetched == 0 || !has_more {
+            break;
+        }
+        page += 1;
+    }
+
+    Ok(())
+}
+
+/// Plugin Parquet path: weak typing from JSON cells (no declared column types
+/// on [`QueryResult`]). Logs a warning once when falling back.
+async fn stream_typed_via_plugin<F>(
+    driver_id: &str,
+    params: &ConnectionParams,
+    query: &str,
+    mut on_row: F,
+) -> Result<(), String>
+where
+    F: FnMut(&[ColMeta], &[TVal]) -> Result<(), String> + Send,
+{
+    const PAGE_SIZE: u32 = 1000;
+
+    let driver = crate::drivers::registry::get_driver(driver_id)
+        .await
+        .ok_or_else(|| format!("Unsupported driver for export: {driver_id}"))?;
+
+    let mut page: u32 = 1;
+    let mut columns: Option<Vec<ColMeta>> = None;
+    let mut warned = false;
+
+    loop {
+        let result = driver
+            .execute_query(params, query, Some(PAGE_SIZE), page, None)
+            .await?;
+
+        if columns.is_none() && !result.columns.is_empty() {
+            // Infer kinds from the first non-null cell per column across the page.
+            let mut metas: Vec<ColMeta> = result
+                .columns
+                .iter()
+                .map(|name| column_meta_from_type_name(name, "TEXT"))
+                .collect();
+            for (col_idx, meta) in metas.iter_mut().enumerate() {
+                for row in &result.rows {
+                    if let Some(cell) = row.get(col_idx) {
+                        if !cell.is_null() {
+                            meta.kind = infer_kind_from_json(cell);
+                            break;
+                        }
+                    }
+                }
+            }
+            if !warned {
+                log::warn!(
+                    "[export] plugin driver '{driver_id}' Parquet export uses weak JSON typing"
+                );
+                warned = true;
+            }
+            columns = Some(metas);
+        }
+
+        if let Some(cols) = columns.as_ref() {
+            for row in &result.rows {
+                let values: Result<Vec<TVal>, String> = cols
+                    .iter()
+                    .enumerate()
+                    .map(|(i, meta)| {
+                        let cell = row.get(i).unwrap_or(&Value::Null);
+                        typed_value_from_json(cell, meta.kind).or_else(|err| {
+                            log::debug!(
+                                "[export] plugin coerce fallback for '{}': {err}",
+                                meta.name
+                            );
+                            // Safe fallback: stringify rather than abort the whole export.
+                            Ok(TVal::Utf8(match cell {
+                                Value::String(s) => s.clone(),
+                                Value::Null => String::new(),
+                                other => other.to_string(),
+                            }))
+                        })
+                    })
+                    .collect();
+                on_row(cols, &values?)?;
+            }
         }
 
         let fetched = result.rows.len() as u32;

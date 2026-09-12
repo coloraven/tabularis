@@ -2,9 +2,11 @@ use futures::StreamExt;
 use serde_json::Value;
 use sqlx::{Column, Row};
 
+use crate::export::types::{ColumnExportMeta, TypedValue};
 use crate::models::ConnectionParams;
 use crate::pool_manager::get_mysql_pool;
 
+use super::export_typed::{column_meta_from_row, extract_typed};
 use super::extract::extract_value;
 
 /// Streams the rows produced by `query` against a MySQL connection, calling
@@ -44,6 +46,45 @@ where
             .collect();
 
         on_row(h, &values)?;
+    }
+
+    Ok(())
+}
+
+/// Typed stream for Parquet export: full binary values and Faithful DECIMAL.
+pub async fn stream_typed_query<F>(
+    params: &ConnectionParams,
+    query: &str,
+    mut on_row: F,
+) -> Result<(), String>
+where
+    F: FnMut(&[ColumnExportMeta], &[TypedValue]) -> Result<(), String> + Send,
+{
+    let pool = get_mysql_pool(params).await?;
+    let mut rows = if super::force_text_protocol(params) {
+        sqlx::raw_sql(query).fetch(&pool)
+    } else {
+        sqlx::query(query).fetch(&pool)
+    };
+    let mut columns: Option<Vec<ColumnExportMeta>> = None;
+
+    while let Some(row_res) = rows.next().await {
+        let row = row_res.map_err(|e| e.to_string())?;
+
+        if columns.is_none() {
+            columns = Some(
+                (0..row.columns().len())
+                    .map(|i| column_meta_from_row(&row, i))
+                    .collect(),
+            );
+        }
+        let cols = columns.as_ref().expect("columns initialized");
+        let values: Vec<TypedValue> = cols
+            .iter()
+            .enumerate()
+            .map(|(i, meta)| extract_typed(&row, i, meta))
+            .collect();
+        on_row(cols, &values)?;
     }
 
     Ok(())

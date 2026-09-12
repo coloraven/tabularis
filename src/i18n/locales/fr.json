@@ -1198,6 +1198,7 @@
     "runStatement": "Exécuter l'instruction",
     "runAll": "Tout exécuter",
     "export": "Exporter",
+    "exportParquet": "Exporter en Parquet",
     "connected": "Connecté",
     "disconnected": "Déconnecté",
     "newRow": "Nouvelle ligne",

@@ -5,6 +5,7 @@ pub enum ExportFormat {
     Csv,
     Json,
     Markdown,
+    Parquet,
 }
 
 impl ExportFormat {
@@ -13,6 +14,7 @@ impl ExportFormat {
             "csv" => Ok(Self::Csv),
             "json" => Ok(Self::Json),
             "markdown" | "md" => Ok(Self::Markdown),
+            "parquet" => Ok(Self::Parquet),
             other => Err(format!("Unsupported export format: {}", other)),
         }
     }

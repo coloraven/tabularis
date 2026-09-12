@@ -1191,6 +1191,7 @@
     "runStatement": "Patakbuhin ang statement",
     "runAll": "Patakbuhin lahat",
     "export": "I-export",
+    "exportParquet": "I-export bilang Parquet",
     "connected": "Nakakonekta",
     "disconnected": "Nakadiskonekta",
     "newRow": "Bagong Row",

@@ -1197,6 +1197,7 @@
     "runStatement": "Ejecutar sentencia",
     "runAll": "Ejecutar todo",
     "export": "Exportar",
+    "exportParquet": "Exportar como Parquet",
     "connected": "Conectado",
     "disconnected": "Desconectado",
     "newRow": "Nueva Fila",

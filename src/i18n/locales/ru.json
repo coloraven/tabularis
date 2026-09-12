@@ -1172,6 +1172,7 @@
     "runStatement": "Выполнить инструкцию",
     "runAll": "Выполнить все",
     "export": "Экспортировать",
+    "exportParquet": "Экспортировать как Parquet",
     "connected": "Подключено",
     "disconnected": "Отключено",
     "newRow": "Новая строка",

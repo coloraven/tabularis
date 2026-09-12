@@ -1135,6 +1135,7 @@
     "runStatement": "문 실행",
     "runAll": "모두 실행",
     "export": "내보내기",
+    "exportParquet": "Parquet로 내보내기",
     "connected": "연결됨",
     "disconnected": "연결 해제됨",
     "newRow": "새 행",

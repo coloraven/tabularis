@@ -1174,6 +1174,7 @@
     "run": "Executar",
     "runAll": "Executar Tudo",
     "export": "Exportar",
+    "exportParquet": "Exportar como Parquet",
     "connected": "Conectado",
     "disconnected": "Desconectado",
     "newRow": "Nova Linha",

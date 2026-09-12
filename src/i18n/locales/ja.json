@@ -1190,6 +1190,7 @@
     "runStatement": "この文を実行",
     "runAll": "すべて実行",
     "export": "エクスポート",
+    "exportParquet": "Parquet としてエクスポート",
     "connected": "接続済み",
     "disconnected": "切断済み",
     "newRow": "新規行",

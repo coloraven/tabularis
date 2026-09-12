@@ -1178,6 +1178,7 @@
     "runStatement": "Anweisung ausführen",
     "runAll": "Alle ausführen",
     "export": "Exportieren",
+    "exportParquet": "Als Parquet exportieren",
     "connected": "Verbunden",
     "disconnected": "Getrennt",
     "newRow": "Neue Zeile",

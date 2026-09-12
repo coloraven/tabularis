@@ -1208,6 +1208,7 @@
     "runStatement": "Run Statement",
     "runAll": "Run All",
     "export": "Export",
+    "exportParquet": "Export as Parquet",
     "connected": "Connected",
     "disconnected": "Disconnected",
     "newRow": "New Row",

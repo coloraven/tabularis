@@ -1145,6 +1145,7 @@
     "runStatement": "运行当前语句",
     "runAll": "全部运行",
     "export": "导出",
+    "exportParquet": "导出为 Parquet",
     "connected": "已连接",
     "disconnected": "已断开",
     "newRow": "新建行",

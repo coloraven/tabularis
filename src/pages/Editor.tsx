@@ -3509,12 +3509,14 @@ export const Editor = ({ commandScopeId }: EditorProps) => {
     setExportState((prev) => ({ ...prev, isOpen: false }));
   }, []);
 
-  const handleExportCommon = async (format: "csv" | "json" | "markdown") => {
+  const handleExportCommon = async (format: "csv" | "json" | "markdown" | "parquet") => {
     if (!activeTab || !activeConnectionId) return;
 
-    const extension = format === "markdown" ? "md" : format;
+    const extension =
+      format === "markdown" ? "md" : format === "parquet" ? "parquet" : format;
     const multiResult = activeResultEntry?.result;
-    if (multiResult?.rows.length) {
+    // Parquet needs typed streaming from the backend; skip the in-memory text path.
+    if (multiResult?.rows.length && format !== "parquet") {
       try {
         const loadedRowsLimit = getLoadedRowsExportLimit(multiResult);
         const warningMessage = loadedRowsLimit
@@ -3579,7 +3581,12 @@ export const Editor = ({ commandScopeId }: EditorProps) => {
       const filePath = await saveFileDialog({
         filters: [
           {
-            name: format === "markdown" ? "Markdown" : format.toUpperCase(),
+            name:
+              format === "markdown"
+                ? "Markdown"
+                : format === "parquet"
+                  ? "Parquet"
+                  : format.toUpperCase(),
             extensions: [extension],
           },
         ],
@@ -3636,6 +3643,7 @@ export const Editor = ({ commandScopeId }: EditorProps) => {
   const handleExportCSV = () => handleExportCommon("csv");
   const handleExportJSON = () => handleExportCommon("json");
   const handleExportMarkdown = () => handleExportCommon("markdown");
+  const handleExportParquet = () => handleExportCommon("parquet");
 
   // Re-runs the active tab's query without pagination and copies the full
   // result set to the clipboard. Triggered from the grid's select-all flow
@@ -4251,7 +4259,7 @@ export const Editor = ({ commandScopeId }: EditorProps) => {
           {exportMenuOpen && (
             <div
               role="menu"
-              className="absolute top-full right-0 mt-1 w-44 max-w-[calc(100cqw-1rem)] bg-elevated border border-strong rounded-md shadow-xl z-50 flex flex-col py-1 overflow-hidden"
+              className="absolute top-full right-0 mt-1 w-48 max-w-[calc(100cqw-1rem)] bg-elevated border border-strong rounded-md shadow-xl z-50 flex flex-col py-1 overflow-hidden"
             >
               <button
                 role="menuitem"
@@ -4279,6 +4287,15 @@ export const Editor = ({ commandScopeId }: EditorProps) => {
                 <FileText size={14} className="shrink-0 opacity-80" />
                 <span className="flex-1">Markdown</span>
                 <span className="text-xs text-muted">.md</span>
+              </button>
+              <button
+                role="menuitem"
+                onClick={handleExportParquet}
+                className="flex items-center gap-2.5 text-left px-3 py-2 text-sm text-secondary hover:bg-blue-500/15 hover:text-blue-400 transition-colors"
+              >
+                <FileText size={14} className="shrink-0 opacity-80" />
+                <span className="flex-1">{t("editor.exportParquet")}</span>
+                <span className="text-xs text-muted">.parquet</span>
               </button>
             </div>
           )}

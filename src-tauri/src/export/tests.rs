@@ -34,6 +34,18 @@ fn parse_markdown_format_accepts_md_alias() {
 }
 
 #[test]
+fn parse_parquet_format() {
+    assert_eq!(
+        ExportFormat::parse("parquet").unwrap(),
+        ExportFormat::Parquet
+    );
+    assert_eq!(
+        ExportFormat::parse("PARQUET").unwrap(),
+        ExportFormat::Parquet
+    );
+}
+
+#[test]
 fn parse_format_trims_whitespace() {
     assert_eq!(ExportFormat::parse("  csv ").unwrap(), ExportFormat::Csv);
 }

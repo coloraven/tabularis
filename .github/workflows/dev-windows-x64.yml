@@ -72,13 +72,13 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
-      # Local machines may not run cargo; refresh the lockfile here so new
-      # crates (e.g. arrow/parquet) resolve before the Tauri build. The updated
-      # lock is uploaded as an artifact for committing back to the branch.
-      - name: Refresh Cargo.lock
+      # Local machines may not run cargo; resolve only the new crates into
+      # Cargo.lock without bumping unrelated packages (a bare `cargo update`
+      # floated tauri past the pinned NPM majors and broke the build).
+      - name: Refresh Cargo.lock for new crates
         working-directory: src-tauri
         shell: bash
-        run: cargo update
+        run: cargo fetch
 
       - name: Upload refreshed Cargo.lock
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

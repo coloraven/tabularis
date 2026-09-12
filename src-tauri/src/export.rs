@@ -19,7 +19,9 @@ pub use parquet_sink::{ParquetSink, TypedRowSink, DEFAULT_BATCH_ROWS};
 pub use progress::{ProgressEmitter, DEFAULT_INTERVAL as DEFAULT_PROGRESS_INTERVAL};
 pub use sink::{CsvSink, JsonSink, MarkdownSink, RowSink};
 pub use types::{ColumnExportMeta, ExportKind, TypedValue};
-pub use window::{ExportWindow, ExportWindowCounter, RowAction, EXPORT_LIMIT_REACHED};
+pub use window::{
+    is_limit_reached, ExportWindow, ExportWindowCounter, RowAction, EXPORT_LIMIT_REACHED,
+};
 
 use std::collections::HashMap;
 use std::fs::File;
@@ -39,7 +41,6 @@ use crate::drivers::{mysql, postgres, sqlite};
 use crate::models::ConnectionParams;
 
 use types::{ColumnExportMeta as ColMeta, TypedValue as TVal};
-use window::{is_limit_reached, ExportWindow, ExportWindowCounter, RowAction, EXPORT_LIMIT_REACHED};
 
 pub struct ExportCancellationState {
     pub handles: Arc<Mutex<AbortHandleMap>>,

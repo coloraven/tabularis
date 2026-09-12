@@ -5,6 +5,7 @@ mod progress;
 mod schema;
 mod sink;
 mod types;
+mod window;
 
 #[cfg(test)]
 mod tests;
@@ -18,6 +19,7 @@ pub use parquet_sink::{ParquetSink, TypedRowSink, DEFAULT_BATCH_ROWS};
 pub use progress::{ProgressEmitter, DEFAULT_INTERVAL as DEFAULT_PROGRESS_INTERVAL};
 pub use sink::{CsvSink, JsonSink, MarkdownSink, RowSink};
 pub use types::{ColumnExportMeta, ExportKind, TypedValue};
+pub use window::{ExportWindow, ExportWindowCounter, RowAction, EXPORT_LIMIT_REACHED};
 
 use std::collections::HashMap;
 use std::fs::File;
@@ -37,6 +39,7 @@ use crate::drivers::{mysql, postgres, sqlite};
 use crate::models::ConnectionParams;
 
 use types::{ColumnExportMeta as ColMeta, TypedValue as TVal};
+use window::{is_limit_reached, ExportWindow, ExportWindowCounter, RowAction, EXPORT_LIMIT_REACHED};
 
 pub struct ExportCancellationState {
     pub handles: Arc<Mutex<AbortHandleMap>>,
@@ -86,6 +89,8 @@ pub async fn export_query_to_file<R: Runtime>(
     format: String,
     csv_delimiter: Option<String>,
     database: Option<String>,
+    offset: Option<u64>,
+    max_rows: Option<u64>,
 ) -> Result<(), String> {
     let sanitized_query = sanitize_query(&query);
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
@@ -102,6 +107,7 @@ pub async fn export_query_to_file<R: Runtime>(
 
     let export_format = ExportFormat::parse(&format)?;
     let delimiter = parse_csv_delimiter(csv_delimiter.as_deref());
+    let window = ExportWindow::new(offset, max_rows);
 
     let app_for_task = app.clone();
     let task_connection_id = connection_id.clone();
@@ -117,6 +123,7 @@ pub async fn export_query_to_file<R: Runtime>(
             writer,
             export_format,
             delimiter,
+            window,
         )
         .await
     });
@@ -149,6 +156,7 @@ async fn run_export<R: Runtime>(
     writer: BufWriter<File>,
     format: ExportFormat,
     delimiter: u8,
+    window: ExportWindow,
 ) -> Result<(), String> {
     let app_for_progress = app.clone();
     let mut progress = ProgressEmitter::new(DEFAULT_PROGRESS_INTERVAL, move |count| {
@@ -163,22 +171,22 @@ async fn run_export<R: Runtime>(
     match format {
         ExportFormat::Csv => {
             let mut sink = CsvSink::new(writer, delimiter);
-            stream_to_sink(driver, params, query, &mut sink, &mut progress).await?;
+            stream_to_sink(driver, params, query, &mut sink, &mut progress, window).await?;
             sink.finish()?;
         }
         ExportFormat::Json => {
             let mut sink = JsonSink::new(writer);
-            stream_to_sink(driver, params, query, &mut sink, &mut progress).await?;
+            stream_to_sink(driver, params, query, &mut sink, &mut progress, window).await?;
             sink.finish()?;
         }
         ExportFormat::Markdown => {
             let mut sink = MarkdownSink::new(writer);
-            stream_to_sink(driver, params, query, &mut sink, &mut progress).await?;
+            stream_to_sink(driver, params, query, &mut sink, &mut progress, window).await?;
             sink.finish()?;
         }
         ExportFormat::Parquet => {
             let mut sink = ParquetSink::new(writer);
-            stream_typed_to_sink(driver, params, query, &mut sink, &mut progress).await?;
+            stream_typed_to_sink(driver, params, query, &mut sink, &mut progress, window).await?;
             sink.finish()?;
         }
     }
@@ -193,25 +201,32 @@ async fn stream_to_sink<S, F>(
     query: &str,
     sink: &mut S,
     progress: &mut ProgressEmitter<F>,
+    window: ExportWindow,
 ) -> Result<(), String>
 where
     S: RowSink + Send,
     F: FnMut(u64) + Send,
 {
+    let mut counter = ExportWindowCounter::new(window);
     let mut on_row = |headers: &[String], values: &[Value]| -> Result<(), String> {
-        sink.write_row(headers, values)?;
-        progress.tick();
-        Ok(())
+        match counter.next() {
+            RowAction::Skip => Ok(()),
+            RowAction::Write => {
+                sink.write_row(headers, values)?;
+                progress.tick();
+                Ok(())
+            }
+            RowAction::Stop => Err(EXPORT_LIMIT_REACHED.into()),
+        }
     };
 
-    match driver {
+    let result = match driver {
         "mysql" => mysql::export::stream_query(params, query, &mut on_row).await,
         "postgres" => postgres::export::stream_query(params, query, &mut on_row).await,
         "sqlite" => sqlite::export::stream_query(params, query, &mut on_row).await,
-        // External plugin drivers: page through the driver's own paginated
-        // `execute_query` and forward every row to the sink.
         other => stream_query_via_plugin(other, params, query, &mut on_row).await,
-    }
+    };
+    map_limit_result(result)
 }
 
 async fn stream_typed_to_sink<S, F>(
@@ -220,20 +235,28 @@ async fn stream_typed_to_sink<S, F>(
     query: &str,
     sink: &mut S,
     progress: &mut ProgressEmitter<F>,
+    window: ExportWindow,
 ) -> Result<(), String>
 where
     S: TypedRowSink + Send,
     F: FnMut(u64) + Send,
 {
     let mut began = false;
+    let mut counter = ExportWindowCounter::new(window);
     let mut on_row = |columns: &[ColMeta], values: &[TVal]| -> Result<(), String> {
-        if !began {
-            sink.begin(columns)?;
-            began = true;
+        match counter.next() {
+            RowAction::Skip => Ok(()),
+            RowAction::Write => {
+                if !began {
+                    sink.begin(columns)?;
+                    began = true;
+                }
+                sink.write_row(values)?;
+                progress.tick();
+                Ok(())
+            }
+            RowAction::Stop => Err(EXPORT_LIMIT_REACHED.into()),
         }
-        sink.write_row(values)?;
-        progress.tick();
-        Ok(())
     };
 
     let result = match driver {
@@ -242,18 +265,26 @@ where
         "sqlite" => sqlite::export::stream_typed_query(params, query, &mut on_row).await,
         other => stream_typed_via_plugin(other, params, query, &mut on_row).await,
     };
+    let result = map_limit_result(result)?;
 
     // Empty result sets never call on_row — still emit a valid empty Parquet file
     // when the query returns zero rows. Callers that know column metadata could
     // begin earlier; without a row we cannot invent a schema, so finish alone
     // would fail. Surface a clear error instead of a corrupt file.
-    if result.is_ok() && !began {
+    if !began {
         return Err(
             "Query returned no rows; Parquet export needs at least one row to infer columns"
                 .into(),
         );
     }
-    result
+    Ok(result)
+}
+
+fn map_limit_result(result: Result<(), String>) -> Result<(), String> {
+    match result {
+        Err(e) if is_limit_reached(&e) => Ok(()),
+        other => other,
+    }
 }
 
 /// Streams a query for an external plugin driver by repeatedly calling its

@@ -8,6 +8,15 @@ import {
   formatResultForExport,
   getLoadedRowsExportLimit,
 } from "../utils/resultExport";
+import {
+  EXPORT_FORMAT_PLUGINS,
+  getExportFormatPlugin,
+  resolveExportWindow,
+  type ExportConfirmPayload,
+  type ExportFormatId,
+  type ExportScopeContext,
+} from "../export";
+import { ExportSettingsModal } from "../components/modals/ExportSettingsModal";
 import { serializePkKey, buildPkMap } from "../utils/dataGrid";
 import {
   buildKeylessUpdatePlan,
@@ -289,6 +298,8 @@ export const Editor = ({ commandScopeId }: EditorProps) => {
     rowsProcessed: 0,
     fileName: "",
   });
+  const [exportWizardFormat, setExportWizardFormat] =
+    useState<ExportFormatId | null>(null);
 
   const [activeFkQuery, setActiveFkQuery] = useState<{
     fk: ForeignKey;
@@ -3509,141 +3520,174 @@ export const Editor = ({ commandScopeId }: EditorProps) => {
     setExportState((prev) => ({ ...prev, isOpen: false }));
   }, []);
 
-  const handleExportCommon = async (format: "csv" | "json" | "markdown" | "parquet") => {
-    if (!activeTab || !activeConnectionId) return;
+  const exportScopeContext = useMemo((): ExportScopeContext => {
+    const result = activeResultEntry?.result ?? activeTab?.result;
+    return {
+      loadedRows: result?.rows.length ?? 0,
+      currentPage: result?.pagination?.page,
+      pageSize: result?.pagination?.page_size,
+      totalRows: result?.pagination?.total_rows ?? null,
+    };
+  }, [activeResultEntry?.result, activeTab?.result]);
 
-    const extension =
-      format === "markdown" ? "md" : format === "parquet" ? "parquet" : format;
-    const multiResult = activeResultEntry?.result;
-    // Parquet needs typed streaming from the backend; skip the in-memory text path.
-    if (multiResult?.rows.length && format !== "parquet") {
+  const openExportWizard = useCallback((formatId: ExportFormatId) => {
+    setExportMenuOpen(false);
+    setExportWizardFormat(formatId);
+  }, []);
+
+  const runExportWithSettings = useCallback(
+    async (payload: ExportConfirmPayload) => {
+      if (!activeTab || !activeConnectionId) return;
+
+      const plugin = getExportFormatPlugin(payload.formatId);
+      if (!plugin) return;
+
+      setExportWizardFormat(null);
+
+      const window = resolveExportWindow(payload.scope, exportScopeContext);
+      const delimiter =
+        typeof payload.formatOptions.csvDelimiter === "string"
+          ? payload.formatOptions.csvDelimiter
+          : csvDelimiter;
+      const multiResult = activeResultEntry?.result;
+      const useMemory =
+        payload.scope.mode === "loaded" &&
+        plugin.supportsLoadedMemoryExport &&
+        !!multiResult?.rows.length;
+
+      if (useMemory && multiResult) {
+        try {
+          const rows = multiResult.rows;
+          const sliced =
+            window.maxRows != null ? rows.slice(0, window.maxRows) : rows;
+          const exportResult = { ...multiResult, rows: sliced };
+          const loadedRowsLimit = getLoadedRowsExportLimit(multiResult);
+          const warningMessage = loadedRowsLimit
+            ? t("editor.exportLoadedRowsWarning", {
+                loaded: loadedRowsLimit.loadedRows.toLocaleString(),
+                total: loadedRowsLimit.totalRows.toLocaleString(),
+              })
+            : undefined;
+
+          const filePath = await saveFileDialog({
+            filters: [
+              {
+                name: plugin.filterName,
+                extensions: [plugin.extension],
+              },
+            ],
+            defaultPath: `result_${Date.now()}.${plugin.extension}`,
+          });
+          if (!filePath) return;
+
+          setExportState({
+            isOpen: true,
+            status: "exporting",
+            rowsProcessed: sliced.length,
+            fileName: filePath.split(/[/\\]/).pop() || filePath,
+            errorMessage: undefined,
+            warningMessage,
+          });
+
+          await writeTextFile(
+            filePath,
+            formatResultForExport(
+              exportResult,
+              payload.formatId as "csv" | "json" | "markdown",
+              delimiter,
+            ),
+          );
+
+          setExportState((prev) => ({ ...prev, status: "completed" }));
+        } catch (e) {
+          setExportState((prev) => ({
+            ...prev,
+            isOpen: true,
+            status: "error",
+            errorMessage: String(e),
+          }));
+        }
+        return;
+      }
+
+      const effectiveSchema =
+        activeCapabilities?.schemas === true ? activeTab.schema : undefined;
+      const tabForQuery = { ...activeTab, schema: effectiveSchema };
+      const query =
+        activeTab.type === "table" && activeTab.activeTable
+          ? reconstructTableQuery(
+              tabForQuery,
+              activeCapabilities ?? activeDriver ?? undefined,
+            )
+          : activeTab.query;
+
+      if (!query || !query.trim()) return;
+
       try {
-        const loadedRowsLimit = getLoadedRowsExportLimit(multiResult);
-        const warningMessage = loadedRowsLimit
-          ? t("editor.exportLoadedRowsWarning", {
-              loaded: loadedRowsLimit.loadedRows.toLocaleString(),
-              total: loadedRowsLimit.totalRows.toLocaleString(),
-            })
-          : undefined;
-
         const filePath = await saveFileDialog({
           filters: [
             {
-              name: format === "markdown" ? "Markdown" : format.toUpperCase(),
-              extensions: [extension],
+              name: plugin.filterName,
+              extensions: [plugin.extension],
             },
           ],
-          defaultPath: `result_${Date.now()}.${extension}`,
+          defaultPath: `result_${Date.now()}.${plugin.extension}`,
         });
-
         if (!filePath) return;
 
         setExportState({
           isOpen: true,
           status: "exporting",
-          rowsProcessed: multiResult.rows.length,
+          rowsProcessed: 0,
           fileName: filePath.split(/[/\\]/).pop() || filePath,
           errorMessage: undefined,
-          warningMessage,
+          warningMessage: undefined,
         });
-        setExportMenuOpen(false);
 
-        await writeTextFile(
+        const targetDatabase = activeTab?.schema ?? activeSchema ?? undefined;
+        const databaseParam =
+          isMultiDatabaseCapable(activeCapabilities) && targetDatabase
+            ? { database: targetDatabase }
+            : {};
+
+        const extras = plugin.buildInvokeExtras?.(payload.formatOptions) ?? {};
+
+        await invoke("export_query_to_file", {
+          connectionId: activeConnectionId,
+          query,
           filePath,
-          formatResultForExport(multiResult, format, csvDelimiter),
-        );
+          format: payload.formatId,
+          csvDelimiter:
+            payload.formatId === "csv"
+              ? ((extras.csvDelimiter as string | undefined) ?? delimiter)
+              : undefined,
+          offset: window.offset > 0 ? window.offset : undefined,
+          maxRows: window.maxRows ?? undefined,
+          ...databaseParam,
+        });
 
-        setExportState((prev) => ({
-          ...prev,
-          status: "completed",
-        }));
+        setExportState((prev) => ({ ...prev, status: "completed" }));
       } catch (e) {
         setExportState((prev) => ({
           ...prev,
+          isOpen: true,
           status: "error",
           errorMessage: String(e),
         }));
       }
-      return;
-    }
-
-    const effectiveSchema =
-      activeCapabilities?.schemas === true ? activeTab.schema : undefined;
-    const tabForQuery = { ...activeTab, schema: effectiveSchema };
-    const query =
-      activeTab.type === "table" && activeTab.activeTable
-        ? reconstructTableQuery(tabForQuery, activeCapabilities ?? activeDriver ?? undefined)
-        : activeTab.query;
-
-    if (!query || !query.trim()) return;
-
-    try {
-      const filePath = await saveFileDialog({
-        filters: [
-          {
-            name:
-              format === "markdown"
-                ? "Markdown"
-                : format === "parquet"
-                  ? "Parquet"
-                  : format.toUpperCase(),
-            extensions: [extension],
-          },
-        ],
-        defaultPath: `result_${Date.now()}.${extension}`,
-      });
-
-      if (!filePath) return;
-
-      setExportState({
-        isOpen: true,
-        status: "exporting",
-        rowsProcessed: 0,
-        fileName: filePath.split(/[/\\]/).pop() || filePath, // Show only filename
-        errorMessage: undefined,
-        warningMessage: undefined,
-      });
-      setExportMenuOpen(false);
-
-      // On multi-database connections (e.g. MySQL) scope the export to the
-      // selected database so the query runs against the database the user is
-      // viewing rather than the connection's primary database. The tab may not
-      // carry its own schema (e.g. a console query), so fall back to the active
-      // database — mirroring how execute_query resolves the schema.
-      const targetDatabase = activeTab?.schema ?? activeSchema ?? undefined;
-      const databaseParam =
-        isMultiDatabaseCapable(activeCapabilities) && targetDatabase
-          ? { database: targetDatabase }
-          : {};
-
-      await invoke("export_query_to_file", {
-        connectionId: activeConnectionId,
-        query,
-        filePath,
-        format,
-        csvDelimiter: format === "csv" ? csvDelimiter : undefined,
-        ...databaseParam,
-      });
-
-      // Success: update modal state instead of showing toast
-      setExportState((prev) => ({
-        ...prev,
-        status: "completed",
-      }));
-    } catch (e) {
-      // Error: update modal state
-      setExportState((prev) => ({
-        ...prev,
-        status: "error",
-        errorMessage: String(e),
-      }));
-    }
-  };
-
-  const handleExportCSV = () => handleExportCommon("csv");
-  const handleExportJSON = () => handleExportCommon("json");
-  const handleExportMarkdown = () => handleExportCommon("markdown");
-  const handleExportParquet = () => handleExportCommon("parquet");
+    },
+    [
+      activeTab,
+      activeConnectionId,
+      activeResultEntry?.result,
+      activeCapabilities,
+      activeDriver,
+      activeSchema,
+      csvDelimiter,
+      exportScopeContext,
+      t,
+    ],
+  );
 
   // Re-runs the active tab's query without pagination and copies the full
   // result set to the clipboard. Triggered from the grid's select-all flow
@@ -4261,42 +4305,26 @@ export const Editor = ({ commandScopeId }: EditorProps) => {
               role="menu"
               className="absolute top-full right-0 mt-1 w-48 max-w-[calc(100cqw-1rem)] bg-elevated border border-strong rounded-md shadow-xl z-50 flex flex-col py-1 overflow-hidden"
             >
-              <button
-                role="menuitem"
-                onClick={handleExportCSV}
-                className="flex items-center gap-2.5 text-left px-3 py-2 text-sm text-secondary hover:bg-blue-500/15 hover:text-blue-400 transition-colors"
-              >
-                <FileText size={14} className="shrink-0 opacity-80" />
-                <span className="flex-1">CSV</span>
-                <span className="text-xs text-muted">.csv</span>
-              </button>
-              <button
-                role="menuitem"
-                onClick={handleExportJSON}
-                className="flex items-center gap-2.5 text-left px-3 py-2 text-sm text-secondary hover:bg-blue-500/15 hover:text-blue-400 transition-colors"
-              >
-                <FileJson size={14} className="shrink-0 opacity-80" />
-                <span className="flex-1">JSON</span>
-                <span className="text-xs text-muted">.json</span>
-              </button>
-              <button
-                role="menuitem"
-                onClick={handleExportMarkdown}
-                className="flex items-center gap-2.5 text-left px-3 py-2 text-sm text-secondary hover:bg-blue-500/15 hover:text-blue-400 transition-colors"
-              >
-                <FileText size={14} className="shrink-0 opacity-80" />
-                <span className="flex-1">Markdown</span>
-                <span className="text-xs text-muted">.md</span>
-              </button>
-              <button
-                role="menuitem"
-                onClick={handleExportParquet}
-                className="flex items-center gap-2.5 text-left px-3 py-2 text-sm text-secondary hover:bg-blue-500/15 hover:text-blue-400 transition-colors"
-              >
-                <FileText size={14} className="shrink-0 opacity-80" />
-                <span className="flex-1">{t("editor.exportParquet")}</span>
-                <span className="text-xs text-muted">.parquet</span>
-              </button>
+              {EXPORT_FORMAT_PLUGINS.map((plugin) => (
+                <button
+                  key={plugin.id}
+                  role="menuitem"
+                  onClick={() => openExportWizard(plugin.id)}
+                  className="flex items-center gap-2.5 text-left px-3 py-2 text-sm text-secondary hover:bg-blue-500/15 hover:text-blue-400 transition-colors"
+                >
+                  {plugin.id === "json" ? (
+                    <FileJson size={14} className="shrink-0 opacity-80" />
+                  ) : (
+                    <FileText size={14} className="shrink-0 opacity-80" />
+                  )}
+                  <span className="flex-1">
+                    {plugin.labelKey
+                      ? t(plugin.labelKey, { defaultValue: plugin.label })
+                      : plugin.label}
+                  </span>
+                  <span className="text-xs text-muted">.{plugin.extension}</span>
+                </button>
+              ))}
             </div>
           )}
         </div>
@@ -5289,6 +5317,14 @@ export const Editor = ({ commandScopeId }: EditorProps) => {
         warningMessage={exportState.warningMessage}
         onCancel={cancelExport}
         onClose={closeExportModal}
+      />
+      <ExportSettingsModal
+        isOpen={exportWizardFormat != null}
+        formatId={exportWizardFormat}
+        scopeContext={exportScopeContext}
+        initialFormatOptions={{ csvDelimiter }}
+        onClose={() => setExportWizardFormat(null)}
+        onConfirm={runExportWithSettings}
       />
       <QueryParamsModal
         isOpen={queryParamsModal.isOpen}

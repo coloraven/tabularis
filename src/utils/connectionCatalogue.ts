@@ -138,6 +138,8 @@ const ENGINE_DISPLAY_NAMES: Record<string, string> = {
   clickhouse: 'ClickHouse',
   cockroachdb: 'CockroachDB',
   duckdb: 'DuckDB',
+  spreadsheet: 'Excel / Spreadsheet',
+  excel: 'Excel / Spreadsheet',
   dynamodb: 'DynamoDB',
   couchdb: 'CouchDB',
 };

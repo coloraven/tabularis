@@ -11,6 +11,7 @@ import {
   type EngineGroup,
   type ParadigmFacet,
 } from '../utils/connectionCatalogue';
+import { featuredCatalogueDrivers } from '../utils/featuredPlugins';
 
 const BUILTIN_META: Record<string, { engine: string; paradigms: string[] }> = {
   postgres: { engine: 'postgres', paradigms: ['sql'] },
@@ -82,11 +83,18 @@ export function useConnectionCatalogue(): ConnectionCatalogue {
     // show as enabled but are unreachable in the connection picker. Registry
     // entries win on engine collision (they carry downloads/verified/updates).
     const registryEngines = new Set(registryDrivers.map((d) => d.engine));
+    const registrySlugs = new Set(registryDrivers.map((d) => d.slug));
     const localDrivers = registered
       .filter((d) => d.is_builtin !== true)
       .map(localPluginToCatalogueDriver)
       .filter((d) => !registryEngines.has(d.engine));
-    return groupByEngine([...builtinDrivers, ...registryDrivers, ...localDrivers]);
+    const featured = featuredCatalogueDrivers(registered, registrySlugs);
+    return groupByEngine([
+      ...builtinDrivers,
+      ...registryDrivers,
+      ...localDrivers,
+      ...featured,
+    ]);
   }, [registered, registry]);
 
   const facets = useMemo(() => paradigmFacets(groups), [groups]);

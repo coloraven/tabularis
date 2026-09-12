@@ -16,6 +16,17 @@ fn registry_base_url(config: &crate::config::AppConfig) -> &str {
         .unwrap_or(registry::DEFAULT_TABULARIUM_URL)
 }
 
+/// Direct GitHub release assets for first-class plugins not yet on Tabularium.
+/// Asset names follow `{id}-plugin-{platform}.zip` (e.g. spreadsheet-plugin-win-x64.zip).
+fn featured_plugin_download_url(plugin_id: &str, platform: &str) -> Option<String> {
+    match plugin_id {
+        "spreadsheet" => Some(format!(
+            "https://github.com/coloraven/tabularis-spreadsheet-plugin/releases/latest/download/spreadsheet-plugin-{platform}.zip"
+        )),
+        _ => None,
+    }
+}
+
 #[tauri::command]
 pub async fn fetch_plugin_registry(
     app: AppHandle,
@@ -193,7 +204,19 @@ pub async fn install_plugin(
                     .await
                     {
                         Ok(asset) => (asset.download_url, asset.expected_sha256, asset.version),
-                        Err(_) => return Err(api_err),
+                        Err(_) => {
+                            if let Some(url) =
+                                featured_plugin_download_url(&plugin_id, &platform)
+                            {
+                                (
+                                    url,
+                                    None,
+                                    version.clone().unwrap_or_else(|| "0.1.0".to_string()),
+                                )
+                            } else {
+                                return Err(api_err);
+                            }
+                        }
                     }
                 }
             }

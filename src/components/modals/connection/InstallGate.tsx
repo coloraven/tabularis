@@ -46,9 +46,12 @@ export function InstallGate({ driver, status, error, onInstall, onBack }: Instal
   const accent = accentFor(driver);
   const unsupported = !driver.platformSupported;
   const installing = status === "installing";
-  // DuckDB (and only DuckDB today) auto-installs rusty-sheet for workbook paths.
+  // Spreadsheet / DuckDB: rusty-sheet is installed automatically for workbooks.
   const showsSpreadsheetExtensionHint =
-    driver.slug === "duckdb" || driver.engine === "duckdb";
+    driver.slug === "spreadsheet" ||
+    driver.engine === "spreadsheet" ||
+    driver.slug === "duckdb" ||
+    driver.engine === "duckdb";
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
@@ -94,7 +97,9 @@ export function InstallGate({ driver, status, error, onInstall, onBack }: Instal
             <p className="max-w-sm text-xs text-muted">
               {t("connectionCatalogue.spreadsheetExtensionHint", {
                 defaultValue:
-                  "Opening Excel, WPS, or ODS workbooks will automatically install the rusty-sheet DuckDB extension — no manual INSTALL/LOAD commands needed.",
+                  driver.slug === "spreadsheet" || driver.engine === "spreadsheet"
+                    ? "This driver queries Excel, WPS, and ODS files with SQL. The rusty-sheet extension is installed automatically — no DuckDB commands needed."
+                    : "Opening Excel, WPS, or ODS workbooks will automatically install the rusty-sheet DuckDB extension — no manual INSTALL/LOAD commands needed.",
               })}
             </p>
           )}

@@ -2,7 +2,7 @@
 
 ### Features
 
-* **DuckDB spreadsheets:** file pickers honor plugin `file_extensions`; DuckDB can open Excel/WPS/ODS workbooks (sheets as tables) once the DuckDB plugin with rusty-sheet support is installed. Install gate explains that rusty-sheet is installed automatically.
+* **Excel / Spreadsheet** appears as a first-class engine in New Connection (alongside DuckDB). Install the `spreadsheet` plugin to query Excel/WPS/ODS workbooks; rusty-sheet is loaded automatically.
 
 # [0.23.0](https://github.com/TabularisDB/tabularis/compare/v0.22.0...v0.23.0) (2026-09-10)
 

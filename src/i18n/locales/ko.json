@@ -211,7 +211,7 @@
     "refreshDatabaseList": "데이터베이스 목록 새로고침",
     "databaseListUpToDate": "데이터베이스 목록이 최신 상태입니다",
     "allDatabasesRefreshed": "데이터베이스 업데이트됨: {{names}}",
-    "tasks": "Tasks"
+    "jobs": "Jobs"
   },
   "mcp": {
     "title": "MCP 서버 연동",
@@ -2284,15 +2284,14 @@
     }
   },
   "jobs": {
-    "title": "Tasks",
+    "title": "Jobs",
     "subtitle": "{{count}} running",
-    "empty": "No background tasks",
+    "empty": "No background jobs",
     "emptyHint": "Long-running work such as exports appears here so you can track or cancel it.",
     "cancel": "Cancel",
     "remove": "Remove",
     "clearFinished": "Clear finished",
     "openProcessManager": "Open process manager",
-    "viewTasks": "View tasks",
     "status": {
       "queued": "Queued",
       "running": "Running",
@@ -2309,8 +2308,9 @@
       "format": "Format",
       "rows": "Rows"
     },
-    "emptyFiltered": "No tasks in this category",
-    "emptyFilteredHint": "Switch to All or start a task of this type.",
-    "allKinds": "All"
+    "emptyFiltered": "No jobs in this category",
+    "emptyFilteredHint": "Switch to All or start a job of this type.",
+    "allKinds": "All",
+    "viewJobs": "View jobs"
   }
 }

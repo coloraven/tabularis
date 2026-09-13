@@ -39,7 +39,11 @@
     "development": "Development",
     "staging": "Staging",
     "production": "Production",
-    "short": { "development": "DEV", "staging": "STAGING", "production": "PROD" },
+    "short": {
+      "development": "DEV",
+      "staging": "STAGING",
+      "production": "PROD"
+    },
     "banner": "Production — {{name}}",
     "warnTitle": "Production database",
     "warnMessage": "You are about to modify production data on “{{name}}”. Are you sure you want to continue?",
@@ -71,18 +75,17 @@
     "dismiss": "Dismiss"
   },
   "jobs": {
-    "title": "Tasks",
+    "title": "Jobs",
     "subtitle": "{{count}} running",
-    "empty": "No background tasks",
+    "empty": "No background jobs",
     "emptyHint": "Long-running work such as exports appears here so you can track or cancel it.",
-    "emptyFiltered": "No tasks in this category",
-    "emptyFilteredHint": "Switch to All or start a task of this type.",
+    "emptyFiltered": "No jobs in this category",
+    "emptyFilteredHint": "Switch to All or start a job of this type.",
     "allKinds": "All",
     "cancel": "Cancel",
     "remove": "Remove",
     "clearFinished": "Clear finished",
     "openProcessManager": "Open process manager",
-    "viewTasks": "View tasks",
     "status": {
       "queued": "Queued",
       "running": "Running",
@@ -98,7 +101,8 @@
       "started": "Export started in the background",
       "format": "Format",
       "rows": "Rows"
-    }
+    },
+    "viewJobs": "View jobs"
   },
   "sidebar": {
     "connections": "Connections",
@@ -169,7 +173,6 @@
     "deleteFkConfirm": "Delete foreign key \"{{name}}\"?",
     "sqliteFkError": "SQLite does not support dropping FKs via ALTER TABLE.",
     "mcpServer": "MCP Server",
-    "tasks": "Tasks",
     "routines": "Routines",
     "functions": "Functions",
     "procedures": "Procedures",
@@ -264,7 +267,8 @@
     "movePanel": "Move panel",
     "refreshDatabaseList": "Refresh database list",
     "databaseListUpToDate": "Database list is up to date",
-    "allDatabasesRefreshed": "Databases updated: {{names}}"
+    "allDatabasesRefreshed": "Databases updated: {{names}}",
+    "jobs": "Jobs"
   },
   "mcp": {
     "title": "MCP Server Integration",

@@ -211,7 +211,7 @@
     "refreshDatabaseList": "Atualizar lista de bancos de dados",
     "databaseListUpToDate": "A lista de bancos de dados está atualizada",
     "allDatabasesRefreshed": "Bancos de dados atualizados: {{names}}",
-    "tasks": "Tasks"
+    "jobs": "Jobs"
   },
   "mcp": {
     "title": "Integração com Servidor MCP",
@@ -2378,15 +2378,14 @@
     "showLog": "Mostrar log"
   },
   "jobs": {
-    "title": "Tasks",
+    "title": "Jobs",
     "subtitle": "{{count}} running",
-    "empty": "No background tasks",
+    "empty": "No background jobs",
     "emptyHint": "Long-running work such as exports appears here so you can track or cancel it.",
     "cancel": "Cancel",
     "remove": "Remove",
     "clearFinished": "Clear finished",
     "openProcessManager": "Open process manager",
-    "viewTasks": "View tasks",
     "status": {
       "queued": "Queued",
       "running": "Running",
@@ -2403,8 +2402,9 @@
       "format": "Format",
       "rows": "Rows"
     },
-    "emptyFiltered": "No tasks in this category",
-    "emptyFilteredHint": "Switch to All or start a task of this type.",
-    "allKinds": "All"
+    "emptyFiltered": "No jobs in this category",
+    "emptyFilteredHint": "Switch to All or start a job of this type.",
+    "allKinds": "All",
+    "viewJobs": "View jobs"
   }
 }

@@ -3610,7 +3610,7 @@ export const Editor = ({ commandScopeId }: EditorProps) => {
             kind: "info",
             actions: [
               {
-                label: t("jobs.viewTasks"),
+                label: t("jobs.viewJobs"),
                 onClick: () => navigate("/jobs"),
               },
             ],

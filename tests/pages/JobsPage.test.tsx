@@ -36,9 +36,9 @@ vi.mock("react-i18next", () => ({
       const map: Record<string, string> = {
         "jobs.allKinds": "All",
         "jobs.kinds.export": "Export",
-        "jobs.title": "Tasks",
-        "jobs.empty": "No background tasks",
-        "jobs.emptyFiltered": "No tasks in this category",
+        "jobs.title": "Jobs",
+        "jobs.empty": "No background jobs",
+        "jobs.emptyFiltered": "No jobs in this category",
         "jobs.emptyFilteredHint": "filtered hint",
         "jobs.emptyHint": "hint",
         "jobs.clearFinished": "Clear finished",

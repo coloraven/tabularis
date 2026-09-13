@@ -322,7 +322,7 @@ export const Sidebar = () => {
           <NavItem
             to="/jobs"
             icon={ListTodo}
-            label={t("sidebar.tasks")}
+            label={t("sidebar.jobs")}
             badge={runningCount}
           />
 

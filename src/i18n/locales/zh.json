@@ -39,7 +39,11 @@
     "development": "开发",
     "staging": "预发布",
     "production": "生产",
-    "short": { "development": "DEV", "staging": "STAGING", "production": "PROD" },
+    "short": {
+      "development": "DEV",
+      "staging": "STAGING",
+      "production": "PROD"
+    },
     "banner": "生产 — {{name}}",
     "warnTitle": "生产数据库",
     "warnMessage": "您即将修改“{{name}}”上的生产数据。确定要继续吗？",
@@ -70,18 +74,17 @@
     "dismiss": "关闭"
   },
   "jobs": {
-    "title": "任务",
+    "title": "作业",
     "subtitle": "{{count}} 个进行中",
-    "empty": "暂无后台任务",
+    "empty": "暂无后台作业",
     "emptyHint": "导出等长耗时操作会显示在这里，便于查看进度或取消。",
-    "emptyFiltered": "该分类下暂无任务",
-    "emptyFilteredHint": "切换到「全部」，或发起该类型的任务。",
+    "emptyFiltered": "该分类下暂无作业",
+    "emptyFilteredHint": "切换到「全部」，或发起该类型的作业。",
     "allKinds": "全部",
     "cancel": "取消",
     "remove": "移除",
     "clearFinished": "清除已结束",
     "openProcessManager": "打开进程管理器",
-    "viewTasks": "查看任务",
     "status": {
       "queued": "排队中",
       "running": "进行中",
@@ -97,7 +100,8 @@
       "started": "导出已在后台开始",
       "format": "格式",
       "rows": "行数"
-    }
+    },
+    "viewJobs": "查看作业"
   },
   "sidebar": {
     "connections": "连接",
@@ -168,7 +172,6 @@
     "deleteFkConfirm": "删除外键 \"{{name}}\"？",
     "sqliteFkError": "SQLite 不支持通过 ALTER TABLE 删除外键。",
     "mcpServer": "MCP 服务器",
-    "tasks": "任务",
     "routines": "存储过程",
     "functions": "函数",
     "procedures": "存储过程",
@@ -250,7 +253,8 @@
     "movePanel": "移动面板",
     "refreshDatabaseList": "刷新数据库列表",
     "databaseListUpToDate": "数据库列表已是最新",
-    "allDatabasesRefreshed": "数据库已更新:{{names}}"
+    "allDatabasesRefreshed": "数据库已更新:{{names}}",
+    "jobs": "作业"
   },
   "mcp": {
     "title": "MCP 服务器集成",
